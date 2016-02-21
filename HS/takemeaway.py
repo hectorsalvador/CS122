@@ -19,31 +19,32 @@ import oauth2
 
 # sed -i2 's/true/True/g' untitled.txt
 
-def get_business_info(list_of_business_ids):
-	'''
-	Takes a list of business id's (e.g. ['the-promontory-chicago']) and
-	returns a dictionary with the business id's as keys and the Yelp API
-	query as their corresponding values
-	'''
-	query_dict = {}
+def get_business_info(bus_dict):
+    '''
+    Takes a list of business id's (e.g. ['the-promontory-chicago']) and
+    returns a dictionary with the business id's as keys and the Yelp API
+    query as their corresponding values
+    '''
+    query = {}
+    for business in bus_dict.keys():
+        query[business] = get_business(business)
+        bus_dict[business]["categories"] = query[business]["categories"]
+        bus_dict[business]["address"] = query[business]["location"]["address"]
+        bus_dict[business]["neighborhoods"] = query[business]["location"]["neighborhoods"]
+        bus_dict[business]["latitude"] = query[business]["location"]["coordinate"]["latitude"]
+        bus_dict[business]["longitude"] = query[business]["location"]["coordinate"]["longitude"]
+    print(bus_dict) #for debugging
 
-	for business in list_of_business_ids:
-		query_dict[business] = get_business(business)
-        #print(query_dict[business]["location"])
-        print("Loading ..")
-
-	return query_dict
-
-
-### Author: Ken Mitton (Yelp)
-### kmitton@yelp.com 
+##################################
+### Author: Ken Mitton (Yelp)   ##
+### kmitton@yelp.com            ##
 ### https://github.com/Yelp/yelp-api/blob/master/v2/python/sample.py
+##################################
 
 API_HOST = 'api.yelp.com'
 SEARCH_LIMIT = 20
 BUSINESS_PATH = '/v2/business/'
 
-# OAuth credential placeholders that must be filled in by users.
 CONSUMER_KEY = 'dStcfiGFCoZkOlva9XeZtA'
 CONSUMER_SECRET = 'WoJ9LxTFCVgdYFq6yn3GAlLRRXE'
 TOKEN = 'VnMH3YjeyYcvV4mhXVzfcJhOwRNgaBFX'
@@ -101,17 +102,15 @@ def get_business(business_id):
 
     return request(API_HOST, business_path)
 
+################################
+################################
+
 if __name__=="__main__":
     num_args = len(sys.argv)
 
     # b_list = ['the-promontory-chicago', 'cafe-53-chicago']
-    b_list = ['the-promontory-chicago']
-    query = get_business_info(b_list)
-
-    print(query)
+    b_dict = {'the-promontory-chicago': {}}
+    get_business_info(b_dict)
 
 
-##
-##
-## https://maps.googleapis.com/maps/api/staticmap?size=1028x1028&maptype=roadmap\\&markers=color:blue%7Clabel:1%7CFresno,CA&markers=color:red%7Clabel:1%7CFresno,CA%7CLos+Angeles,CA%7COakland,CA&markers=color:red%7Clabel:2%7CSan+Jose,CA&key=AIzaSyCyV611rvT1sv6CHSxy9HOexs6iznpPZPA
 
