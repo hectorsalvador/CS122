@@ -4,13 +4,12 @@
 # Hector Salvador Lopez
 
 import re
-import util
 from bs4 import BeautifulSoup
 import queue
 import json
 import sys
 import csv
-import urllib
+import urllib.parse
 import requests
 import datetime
 
@@ -57,8 +56,8 @@ def create_website(criteria):
 
 def add_links(tag,url_queue,url_set):
         url = tag.get("href")
-        url = util.remove_fragment(url)
-        url = util.convert_if_relative_url("http://www.yelp.com/", url)
+        url = remove_fragment(url)
+        url = convert_if_relative_url("http://www.yelp.com/", url)
         print(url)
         if url != None and url not in url_set: 
             url_queue.put(url)
@@ -174,8 +173,9 @@ def run_model(criteria, num_pages_to_crawl):
         soup = get_soup(current_url,url_set)
         print(current_url)
         biz_dict = get_biz_info(soup,url_set,attributes_set)
-        if biz_dict != None:
-            biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
+        biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
+        if biz_dict != None and establishments_dict[biz_id]:
+            # biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
             print(biz_id)
             establishments_dict[biz_id] = biz_dict
             print(len(url_set))
@@ -186,7 +186,62 @@ def run_model(criteria, num_pages_to_crawl):
     with open('establishments_dict.json', 'w') as f:
         json.dump(establishments_dict, f)
 
+def is_absolute_url(url):
+    '''
+    Is url an absolute URL?
+    '''
+    if len(url) == 0:
+        return False
+    return len(urllib.parse.urlparse(url).netloc) != 0
 
+
+def remove_fragment(url):
+    '''remove the fragment from a url'''
+
+    (url, frag) = urllib.parse.urldefrag(url)
+    return url
+
+
+def convert_if_relative_url(current_url, new_url):
+    '''
+    Attempt to determine whether new_url is a relative URL and if so,
+    use current_url to determine the path and create a new absolute
+    URL.  Will add the protocol, if that is all that is missing.
+
+    Inputs:
+        current_url: absolute URL
+        new_url: 
+
+    Outputs:
+        new absolute URL or None, if cannot determine that
+        new_url is a relative URL.
+
+    Examples:
+        convert_if_relative_url("http://cs.uchicago.edu", "pa/pa1.html") yields 
+            'http://cs.uchicago.edu/pa/pa.html'
+
+        convert_if_relative_url("http://cs.uchicago.edu", "foo.edu/pa.html") yields
+            'http://foo.edu/pa.html'
+    '''
+    if len(new_url) == 0 or not is_absolute_url(current_url):
+        return None
+
+    if is_absolute_url(new_url):
+        return new_url
+
+    parsed_url = urllib.parse.urlparse(new_url)
+    path_parts = parsed_url.path.split("/")
+
+    if len(path_parts) == 0:
+        return None
+
+    ext = path_parts[0][-4:]
+    if ext in [".edu", ".org", ".com", ".net"]:
+        return parsed_url.scheme + new_url
+    elif new_url[:3] == "www":
+        return parsed_url.scheme + new_path
+    else:
+        return urllib.parse.urljoin(current_url, new_url)
 # soup = get_soup(biz,url_set)
 # establishments_dict = get_biz_info(soup, url_set, attribute_set)
 # with open('establishments_dict.json', 'w') as f:
