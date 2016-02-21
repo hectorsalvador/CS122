@@ -1,4 +1,4 @@
-{Chicago, IL: [Albany Park, Andersonville, Archer Heights,
+“{Chicago, IL: [Albany Park, Andersonville, Archer Heights,
 Ashburn, Auburn Gresham, Austin, Avalon Park, Avondale, 
 Back of the Yards, Belmont Central, Beverly, Brainerd,
 Bridgeport, Brighton Park, Bronzeville, Bucktown, Burnside,
@@ -22,4 +22,4 @@ Streeterville, The Loop, Tri-Taylor, Ukrainian Village,
 University Village, Uptown, Washington Heights, Washington Park,
 West Elsdon, West Englewood, West Garfield Park, West Lawn,
 West Loop, West Pullman, West Rogers Park, West Town,
-Wicker Park, Woodlawn, Wrigleyville]}
+Wicker Park, Woodlawn, Wrigleyville]}”

@@ -17,7 +17,6 @@ import oauth2
 # 	if 'US' in elem.get('country_whitelist', []):
 # 		us_categories.append(elem) #now we have a list of categories in the US
 
-
 # sed -i2 's/true/True/g' untitled.txt
 
 def get_business_info(list_of_business_ids):
@@ -30,7 +29,7 @@ def get_business_info(list_of_business_ids):
 
 	for business in list_of_business_ids:
 		query_dict[business] = get_business(business)
-        print(query_dict[business]["location"])
+        #print(query_dict[business]["location"])
         print("Loading ..")
 
 	return query_dict
@@ -109,6 +108,10 @@ if __name__=="__main__":
     b_list = ['the-promontory-chicago']
     query = get_business_info(b_list)
 
-    print(query.keys())
+    print(query)
 
+
+##
+##
+## https://maps.googleapis.com/maps/api/staticmap?size=1028x1028&maptype=roadmap\\&markers=color:blue%7Clabel:1%7CFresno,CA&markers=color:red%7Clabel:1%7CFresno,CA%7CLos+Angeles,CA%7COakland,CA&markers=color:red%7Clabel:2%7CSan+Jose,CA&key=AIzaSyCyV611rvT1sv6CHSxy9HOexs6iznpPZPA
 
