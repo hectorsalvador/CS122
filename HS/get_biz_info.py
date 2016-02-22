@@ -1,6 +1,9 @@
+# v 0.1 for Python 2.7
+# Carlos O. Grandet Caballero
+# Hector Salvador Lopez
+
 import json
 import argparse
-import json
 import pprint
 import sys
 import urllib
@@ -21,9 +24,9 @@ import oauth2
 
 def get_business_info(bus_dict):
     '''
-    Takes a list of business id's (e.g. ['the-promontory-chicago']) and
-    returns a dictionary with the business id's as keys and the Yelp API
-    query as their corresponding values
+    Takes a dictionary where the keys are business id's 
+    (e.g. ['the-promontory-chicago']) and modifies it in place with information
+    from the Yelp API
     '''
     query = {}
     for business in bus_dict.keys():
