@@ -115,13 +115,16 @@ def get_biz_info(soup, url_set, attr_set):
         
     #Get attributes
     attribute_tag = soup.find("div",class_ = "short-def-list").find_all("dl")
+    attribute_dict = {} 
     if attribute_tag != None:
         for tag in attribute_tag:
             attr_title = re.search("[A-Za-z].+",tag.find("dt").text).group(0)
             attr_desc = re.search("[A-Za-z].+",tag.find("dd").text).group(0)
-            biz_dict[attr_title] = attr_desc 
+            attribute_dict[attr_title] = attr_desc 
             attr_set.add((attr_title, attr_desc))
+        biz_dict["attributes"] = attribute_dict
     
+
     comment_tag = soup.find_all("div", class_ = "review-content")
     if comment_tag != None:
         comment_dict = {}
@@ -197,6 +200,16 @@ def run_model(criteria, num_pages_to_crawl):
 
     with open('establishments_dict.json', 'w') as f:
         json.dump(establishments_dict, f)
+
+    attributes_set_dict = {}
+    for key, value in list(attributes_set):
+        attr_list = attributes_set_dict.get(key,[])
+        attr_list.append(value)
+        attributes_set_dict[key] = attr_list
+
+    with open('attributes_dict.json', 'w') as a:
+        json.dump(attributes_set_dict, a)
+
 
 def is_absolute_url(url):
     '''
@@ -327,9 +340,7 @@ def get_business(business_id):
 
 if __name__=="__main__":
 
-    # b_list = ['the-promontory-chicago', 'cafe-53-chicago']
-    # b_dict = {'the-promontory-chicago': {}}
-    run_model(CRITERIA, 3)
+    run_model(CRITERIA, 20)
 
 
 # soup = get_soup(biz,url_set)
