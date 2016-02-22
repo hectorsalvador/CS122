@@ -1,18 +1,22 @@
-# CS122: Course Search Engine Part 1
-#
+# v 0.1 for Python 2.7
 # Carlos O. Grandet Caballero
 # Hector Salvador Lopez
 
 import re
 from bs4 import BeautifulSoup
-import queue
+import Queue
 import json
 import sys
 import csv
-import urllib.parse
+import argparse
+import pprint
+import urlparse
+import urllib
+import urllib2
 import requests
 import datetime
 
+import oauth2
 
 INITIAL_WEBSITE = "http://www.yelp.com/"
 
@@ -23,24 +27,24 @@ TYPE_ESTABLISHMENT = ["Active Life", "Arts & Entertainment", "Automotive", "Beau
                     "Religious Organizations","Restaurants","Shopping"]
 NEIGHBORHOOD = []
 
-criteria = {"neighborhood":"Hyde Park","establishment":"food","price_range":"1"}
+CRITERIA = {"neighborhood": "Hyde Park", "establishment": "food", "price_range": "1"}
 
 biz = "http://www.yelp.com/biz/harper-cafe-chicago"
 url_set = set()
 attribute_set = set()
 
 def get_soup(url, url_set):
-    html = urllib.request.urlopen(url).read()
-    soup = BeautifulSoup(html,"html5lib")
+    html = urllib.urlopen(url).read()
+    soup = BeautifulSoup(html,"html.parser")
     url_set.add(url) 
-
     return soup
-
 
 def create_website(criteria):
     '''
-    Create the first website to crawl info based on characteristics 
-
+    Creates the first website url to crawl based on neighborhood, type of 
+        establishment, and price range 
+    Input: criteria - a dictionary with three keys indicating neighborhood, 
+        type of establishment, and price range
     Output: a website url 
     '''
     neighborhood = criteria["neighborhood"].split()
@@ -53,43 +57,39 @@ def create_website(criteria):
     final_url = basic_url + neighborhood_url + establishment_url + price_url
     return final_url
 
+def add_links(tag, url_queue, url_set):
+    url = tag.get("href")
+    url = remove_fragment(url)
+    url = convert_if_relative_url("http://www.yelp.com/", url)
+    print(url)
+    if url != None and url not in url_set: 
+        url_queue.put(url)
 
-def add_links(tag,url_queue,url_set):
-        url = tag.get("href")
-        url = remove_fragment(url)
-        url = convert_if_relative_url("http://www.yelp.com/", url)
-        print(url)
-        if url != None and url not in url_set: 
-            url_queue.put(url)
-
-
-def add_business_urls(soup,url_queue,url_set):
-    biz_tags = soup.find_all("a",class_= "biz-name")
+def add_business_urls(soup, url_queue, url_set):
+    biz_tags = soup.find_all("a", class_= "biz-name")
     if biz_tags == None:
         print("not a result page")
         return None
     for tag in biz_tags:
         # biz_name = re.search('(?![biz])[A-Za-z0-9-]+',biz_url)
         # list_biz.append(biz_name.group(0))
-        add_links(tag,url_queue,url_set)
+        add_links(tag, url_queue, url_set)
 
-
-def add_additional_pages_urls(soup,url_queue,url_set):
+def add_additional_pages_urls(soup, url_queue, url_set):
     result_tag = soup.find_all("a", class_ = "available-number pagination-links_anchor")
     if result_tag == None:
         print("link not available")
         return None
     for tag in result_tag:
-        add_links(tag,url_queue,url_set)
+        add_links(tag, url_queue, url_set)
 
     # return list_biz
 
-def get_biz_info(soup,url_set,attr_set):
+def get_biz_info(soup, url_set, attr_set):
     main_tag = soup.find("div", class_= "biz-page-header-left")
     if main_tag == None:
         print("not a business page")
         return None
-    
     biz_dict = {}
     
     #Get main attributes of business
@@ -115,23 +115,27 @@ def get_biz_info(soup,url_set,attr_set):
         
     #Get attributes
     attribute_tag = soup.find("div",class_ = "short-def-list").find_all("dl")
+    attribute_dict = {} 
     if attribute_tag != None:
         for tag in attribute_tag:
             attr_title = re.search("[A-Za-z].+",tag.find("dt").text).group(0)
             attr_desc = re.search("[A-Za-z].+",tag.find("dd").text).group(0)
-            biz_dict[attr_title] = attr_desc 
-            attr_set.add((attr_title,attr_desc))
+            attribute_dict[attr_title] = attr_desc 
+            attr_set.add((attr_title, attr_desc))
+        biz_dict["attributes"] = attribute_dict
     
+
     comment_tag = soup.find_all("div", class_ = "review-content")
     if comment_tag != None:
         comment_dict = {}
         for i, tag in enumerate(comment_tag):
             description = tag.find("p", itemprop = "description").text
-            rating = re.search("\d",tag.find("i").get("title")).group(0)
+            rating = re.search("\d", tag.find("i").get("title")).group(0)
             date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
             date_list = [int(i) for i in date_list]
             date = datetime.date(date_list[0],date_list[1],date_list[2])
-            comment_dict[i] = {"description":description,"rating":rating,"date":date_list} #Cambio para hacerlo JSON
+            comment_dict[i] = {"description" : description, "rating" : rating, \
+            "date" : date_list} #Cambio para hacerlo JSON
         biz_dict["comments"] = comment_dict
 
     return biz_dict
@@ -142,49 +146,70 @@ def get_biz_info(soup,url_set,attr_set):
     # while not comment_queue.empty():
     #     soup = get_soup(current_url,url_set)
 
-def get_comments(soup,biz_dict):    
+def get_comments(soup, biz_dict):    
     comment_tag = soup.find_all("div", class_ = "review-content")
     if comment_tag != None:
         comment_dict = {}
         for i, tag in enumerate(comment_tag):
             description = tag.find("p", itemprop = "description").text
-            rating = re.search("\d",tag.find("i").get("title")).group(0)
+            rating = re.search("\d", tag.find("i").get("title")).group(0)
             date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
             date_list = [int(i) for i in date_list]
             date = datetime.date(date_list[0],date_list[1],date_list[2])
-            comment_dict[i] = {"description":description,"rating":rating,"date":date}
+            comment_dict[i] = {"description" : description, "rating" : rating, \
+            "date" : date}
         biz_dict["comments"] = comment_dict
 
     return biz_dict
 
+# Por que este get_comments y el ultimo pedazo del codigo anterior?
+# Son iguales...
 
 def run_model(criteria, num_pages_to_crawl):
     original_url = create_website(criteria)
     url_set = set()
-    url_queue = queue.Queue()
+    url_queue = Queue.Queue()
     url_queue.put(original_url)
 
     establishments_list = []
     establishments_dict = {}
+    api_dict = {}
     attributes_set = set()
     
     while not url_queue.empty() and len(url_set) <= num_pages_to_crawl:
         current_url = url_queue.get()
-        soup = get_soup(current_url,url_set)
+        soup = get_soup(current_url, url_set)
         print(current_url)
-        biz_dict = get_biz_info(soup,url_set,attributes_set)
-        biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
-        if biz_dict != None and establishments_dict[biz_id]:
-            # biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
+        biz_dict = get_biz_info(soup, url_set, attributes_set)
+        #biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
+        if biz_dict != None:
+        #if biz_dict != None and establishments_dict[biz_id]:
+            biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
             print(biz_id)
             establishments_dict[biz_id] = biz_dict
+            api_dict[biz_id] = get_business(biz_id)
+            biz_dict["categories"] = api_dict[biz_id]["categories"]
+            biz_dict["address"] = api_dict[biz_id]["location"]["address"]
+            biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
+            biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
+            biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
             print(len(url_set))
         else: 
-            add_business_urls(soup,url_queue,url_set)
-            add_additional_pages_urls(soup,url_queue,url_set)
+            add_business_urls(soup, url_queue, url_set)
+            add_additional_pages_urls(soup, url_queue, url_set)
 
     with open('establishments_dict.json', 'w') as f:
         json.dump(establishments_dict, f)
+
+    attributes_set_dict = {}
+    for key, value in list(attributes_set):
+        attr_list = attributes_set_dict.get(key,[])
+        attr_list.append(value)
+        attributes_set_dict[key] = attr_list
+
+    with open('attributes_dict.json', 'w') as a:
+        json.dump(attributes_set_dict, a)
+
 
 def is_absolute_url(url):
     '''
@@ -192,13 +217,12 @@ def is_absolute_url(url):
     '''
     if len(url) == 0:
         return False
-    return len(urllib.parse.urlparse(url).netloc) != 0
+    return len(urlparse.urlparse(url).netloc) != 0
 
 
 def remove_fragment(url):
     '''remove the fragment from a url'''
-
-    (url, frag) = urllib.parse.urldefrag(url)
+    (url, frag) = urlparse.urldefrag(url)
     return url
 
 
@@ -229,7 +253,7 @@ def convert_if_relative_url(current_url, new_url):
     if is_absolute_url(new_url):
         return new_url
 
-    parsed_url = urllib.parse.urlparse(new_url)
+    parsed_url = urlparse.urlparse(new_url)
     path_parts = parsed_url.path.split("/")
 
     if len(path_parts) == 0:
@@ -241,7 +265,84 @@ def convert_if_relative_url(current_url, new_url):
     elif new_url[:3] == "www":
         return parsed_url.scheme + new_path
     else:
-        return urllib.parse.urljoin(current_url, new_url)
+        return urlparse.urljoin(current_url, new_url)
+
+##################################
+### Author: Ken Mitton (Yelp)   ##
+### kmitton@yelp.com            ##
+### https://github.com/Yelp/yelp-api/blob/master/v2/python/sample.py
+##################################
+
+API_HOST = 'api.yelp.com'
+SEARCH_LIMIT = 20
+BUSINESS_PATH = '/v2/business/'
+
+CONSUMER_KEY = 'dStcfiGFCoZkOlva9XeZtA'
+CONSUMER_SECRET = 'WoJ9LxTFCVgdYFq6yn3GAlLRRXE'
+TOKEN = 'VnMH3YjeyYcvV4mhXVzfcJhOwRNgaBFX'
+TOKEN_SECRET = 'boGGX7K0aX2gcY39kF3uAwuEdu0'
+
+def request(host, path, url_params=None):
+    """Prepares OAuth authentication and sends the request to the API.
+    Args:
+        host (str): The domain host of the API.
+        path (str): The path of the API after the domain.
+        url_params (dict): An optional set of query parameters in the request.
+    Returns:
+        dict: The JSON response from the request.
+    Raises:
+        urllib2.HTTPError: An error occurs from the HTTP request.
+    """
+    url_params = url_params or {}
+    url = 'https://{0}{1}?'.format(host, urllib.quote(path.encode('utf8')))
+
+    consumer = oauth2.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
+    oauth_request = oauth2.Request(
+        method="GET", url=url, parameters=url_params)
+
+    oauth_request.update(
+        {
+            'oauth_nonce': oauth2.generate_nonce(),
+            'oauth_timestamp': oauth2.generate_timestamp(),
+            'oauth_token': TOKEN,
+            'oauth_consumer_key': CONSUMER_KEY
+        }
+    )
+    token = oauth2.Token(TOKEN, TOKEN_SECRET)
+    oauth_request.sign_request(
+        oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
+    signed_url = oauth_request.to_url()
+
+    print u'Querying {0} ...'.format(url)
+
+    conn = urllib2.urlopen(signed_url, None)
+    try:
+        response = json.loads(conn.read())
+    finally:
+        conn.close()
+
+    return response
+
+def get_business(business_id):
+    """Query the Business API by a business ID.
+    Args:
+        business_id (str): The ID of the business to query.
+    Returns:
+        dict: The JSON response from the request.
+    """
+    business_path = BUSINESS_PATH + business_id
+
+    return request(API_HOST, business_path)
+
+################################
+################################
+
+
+if __name__=="__main__":
+
+    run_model(CRITERIA, 20)
+
+
 # soup = get_soup(biz,url_set)
 # establishments_dict = get_biz_info(soup, url_set, attribute_set)
 # with open('establishments_dict.json', 'w') as f:
