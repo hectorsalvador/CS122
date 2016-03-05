@@ -17,21 +17,8 @@ import requests
 import datetime
 
 import oauth2
+import cgi
 
-INITIAL_WEBSITE = "http://www.yelp.com/"
-
-TYPE_ESTABLISHMENT = ["Active Life", "Arts & Entertainment", "Automotive", "Beauty & Spas", "Education", 
-                    "Event Planning & Services","Financial Services","Food","Health & Medical", "Home Services",
-                    "Hotels & Travel","Local Flavor","Local Services","Mass Media","Nightlife","Pets",
-                    "Professional Services", "Public Services & Government", "Real Estate", 
-                    "Religious Organizations","Restaurants","Shopping"]
-NEIGHBORHOOD = []
-
-CRITERIA = {"neighborhood": "Hyde Park", "establishment": "food", "price_range": "1"}
-
-biz = "http://www.yelp.com/biz/harper-cafe-chicago"
-url_set = set()
-attribute_set = set()
 
 def get_soup(url, url_set):
     html = urllib.urlopen(url).read()
@@ -47,21 +34,25 @@ def create_website(criteria):
         type of establishment, and price range
     Output: a website url 
     '''
+    x = "http://www.yelp.com/search?start=0&sortby=rating&cflt=food&attrs=RestaurantsPriceRange2.1&l=p:IL:Chicago::Lakeview"
     neighborhood = criteria["neighborhood"].split()
     establishment = criteria["establishment"]
     price_range = criteria["price_range"]
     basic_url = "http://www.yelp.com/search?"
-    neighborhood_url = "find_loc={x},+Chicago,+IL&start=0&".format(x = "+".join(neighborhood))
     establishment_url = "sortby=rating&cflt={x}&attrs=Restaurants".format(x = establishment)
-    price_url = "PriceRange2.{x}".format(x = price_range)
-    final_url = basic_url + neighborhood_url + establishment_url + price_url
+    price_url = "PriceRange2.{x}&".format(x = price_range)
+    neighborhood_url = "l=p:IL:Chicago::{x}".format(x = "_".join(neighborhood))
+    final_url = basic_url + establishment_url + price_url + neighborhood_url
     return final_url
 
 def add_links(tag, url_queue, url_set):
     url = tag.get("href")
     url = remove_fragment(url)
     url = convert_if_relative_url("http://www.yelp.com/", url)
-    print(url)
+    # scheme, netloc, path, params, query, fragment = urlparse.urlparse(url)
+    # url = scheme+"://"+netloc+path
+    if re.search("(.+)(\?search)", url) != None:
+        url = re.search("(.+)(\?search)", url).group(1)  
     if url != None and url not in url_set: 
         url_queue.put(url)
 
@@ -85,7 +76,7 @@ def add_additional_pages_urls(soup, url_queue, url_set):
 
     # return list_biz
 
-def get_biz_info(soup, url_set, attr_set):
+def get_biz_info(soup, url_set, attributes_set):
     main_tag = soup.find("div", class_= "biz-page-header-left")
     if main_tag == None:
         print("not a business page")
@@ -93,12 +84,24 @@ def get_biz_info(soup, url_set, attr_set):
     biz_dict = {}
     
     #Get main attributes of business
-    price = main_tag.find("span", class_ = "business-attribute price-range").text
-    biz_dict["price"] = price
-    number_of_reviews = main_tag.find("span", itemprop = "reviewCount").text
-    biz_dict["number_of_reviews"] = number_of_reviews
-    rating = main_tag.find("meta", itemprop = "ratingValue").get("content")
-    biz_dict["rating"] = rating
+    price = main_tag.find("span", class_ = "business-attribute price-range")
+    if price == None:
+        print("not price")
+        return None
+    else:
+        biz_dict["price"] = price.text
+    number_of_reviews = main_tag.find("span", itemprop = "reviewCount")
+    if number_of_reviews == None:
+        print("not reviews")
+        return None
+    else:
+        biz_dict["number_of_reviews"] = number_of_reviews.text
+    rating = main_tag.find("meta", itemprop = "ratingValue")
+    if number_of_reviews == None:
+        print("not rating")
+        return None
+    else:
+        biz_dict["rating"] = rating.get("content")
     
     #Get opening and closing times
     hours_tag = soup.find("table", class_ = "table table-simple hours-table")
@@ -114,58 +117,52 @@ def get_biz_info(soup, url_set, attr_set):
         biz_dict["times"] = time_dict
         
     #Get attributes
-    attribute_tag = soup.find("div",class_ = "short-def-list").find_all("dl")
-    attribute_dict = {} 
+    attribute_tag = soup.find("div",class_ = "short-def-list")
+    attributes_dict = {} 
     if attribute_tag != None:
-        for tag in attribute_tag:
-            attr_title = re.search("[A-Za-z].+",tag.find("dt").text).group(0)
-            attr_desc = re.search("[A-Za-z].+",tag.find("dd").text).group(0)
-            attribute_dict[attr_title] = attr_desc 
-            attr_set.add((attr_title, attr_desc))
-        biz_dict["attributes"] = attribute_dict
+        for tag in attribute_tag.find_all("dl"):
+            attr_title = re.search("[A-Za-z0-9].+",tag.find("dt").text).group(0)
+            attr_desc = re.search("[A-Za-z0-9].+",tag.find("dd").text).group(0)
+            attributes_dict[attr_title] = attr_desc 
+            attributes_set.add((attr_title, attr_desc))
+        biz_dict["attributes"] = attributes_dict
     
+    #Get comments 
+    comment_dict = {}
+    comment_url_queue = Queue.Queue()
+    comment_url_set = set()
+    #Crawl comments pages
+    add_additional_pages_urls(soup,comment_url_queue,comment_url_set)
+    soup_list = [soup]
+    while not comment_url_queue.empty() and len(comment_url_set) < 2:
+        current_url = comment_url_queue.get()+"&sort_by=date_desc"
+        print(current_url,"comment_website")
+        current_soup = get_soup(current_url,comment_url_set)
+        # add_additional_pages_urls(current_soup,comment_url_queue,comment_url_set)
+        soup_list.append(current_soup)
+        
+    
+    number_comment = 0 
+    for soup_item in soup_list:
+        comment_tag = soup_item.find_all("div", class_ = "review-content")
+        if comment_tag != None:
+            for tag in comment_tag:
+                description = tag.find("p", itemprop = "description").text
+                rating = re.search("\d", tag.find("i").get("title")).group(0)
+                date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
+                date_list = [int(val) for val in date_list]
+                # date = datetime.date(date_list[0],date_list[1],date_list[2])
+                comment_dict[number_comment] = {"description" : description, "rating" : rating, \
+                "date" : date_list} #Cambio para hacerlo JSON
+                number_comment += 1
 
-    comment_tag = soup.find_all("div", class_ = "review-content")
-    if comment_tag != None:
-        comment_dict = {}
-        for i, tag in enumerate(comment_tag):
-            description = tag.find("p", itemprop = "description").text
-            rating = re.search("\d", tag.find("i").get("title")).group(0)
-            date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
-            date_list = [int(i) for i in date_list]
-            date = datetime.date(date_list[0],date_list[1],date_list[2])
-            comment_dict[i] = {"description" : description, "rating" : rating, \
-            "date" : date_list} #Cambio para hacerlo JSON
-        biz_dict["comments"] = comment_dict
 
+    biz_dict["comments"] = comment_dict
+    
     return biz_dict
 
-    #Get comments
-    # comment_queue = queue.Queue()
-    # add_additional_pages_urls(soup,comment_queue,url_set)
-    # while not comment_queue.empty():
-    #     soup = get_soup(current_url,url_set)
 
-def get_comments(soup, biz_dict):    
-    comment_tag = soup.find_all("div", class_ = "review-content")
-    if comment_tag != None:
-        comment_dict = {}
-        for i, tag in enumerate(comment_tag):
-            description = tag.find("p", itemprop = "description").text
-            rating = re.search("\d", tag.find("i").get("title")).group(0)
-            date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
-            date_list = [int(i) for i in date_list]
-            date = datetime.date(date_list[0],date_list[1],date_list[2])
-            comment_dict[i] = {"description" : description, "rating" : rating, \
-            "date" : date}
-        biz_dict["comments"] = comment_dict
-
-    return biz_dict
-
-# Por que este get_comments y el ultimo pedazo del codigo anterior?
-# Son iguales...
-
-def run_model(criteria, num_pages_to_crawl):
+def run_model(criteria, num_pages_to_crawl,filename, attributes_set):
     original_url = create_website(criteria)
     url_set = set()
     url_queue = Queue.Queue()
@@ -174,41 +171,50 @@ def run_model(criteria, num_pages_to_crawl):
     establishments_list = []
     establishments_dict = {}
     api_dict = {}
-    attributes_set = set()
+    
     
     while not url_queue.empty() and len(url_set) <= num_pages_to_crawl:
         current_url = url_queue.get()
-        soup = get_soup(current_url, url_set)
+        if current_url in url_set:
+            continue
+
         print(current_url)
+        print(len(url_set))
+        soup = get_soup(current_url, url_set)
         biz_dict = get_biz_info(soup, url_set, attributes_set)
         #biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
         if biz_dict != None:
         #if biz_dict != None and establishments_dict[biz_id]:
-            biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
-            print(biz_id)
-            establishments_dict[biz_id] = biz_dict
-            api_dict[biz_id] = get_business(biz_id)
-            biz_dict["categories"] = api_dict[biz_id]["categories"]
-            biz_dict["address"] = api_dict[biz_id]["location"]["address"]
-            biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
-            biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
-            biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
-            print(len(url_set))
+            if re.search("(biz/)(.+)(\?+)", current_url) == None:
+                biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
+            else:
+                biz_id = re.search("(biz/)(.+)(\?+)", current_url).group(2)
+            
+            try:
+                api_dict[biz_id] = get_business(biz_id)
+                biz_dict["categories"] = api_dict[biz_id]["categories"]
+                biz_dict["address"] = api_dict[biz_id]["location"]["address"]
+                biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
+                biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
+                biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
+            except:
+                print("API failed")
+
+            try:
+                with open(filename, "r") as b:
+                    establishments_dict = json.load(b)
+                    establishments_dict[biz_id] = biz_dict
+                with open(filename, "w") as c:
+                    json.dump(establishments_dict,c, sort_keys=True)
+
+            except:
+                with open(filename, "w") as c:
+                    json.dump(establishments_dict,c)
+                    establishments_dict[biz_id] = biz_dict
+            
         else: 
             add_business_urls(soup, url_queue, url_set)
             add_additional_pages_urls(soup, url_queue, url_set)
-
-    with open('establishments_dict.json', 'w') as f:
-        json.dump(establishments_dict, f)
-
-    attributes_set_dict = {}
-    for key, value in list(attributes_set):
-        attr_list = attributes_set_dict.get(key,[])
-        attr_list.append(value)
-        attributes_set_dict[key] = attr_list
-
-    with open('attributes_dict.json', 'w') as a:
-        json.dump(attributes_set_dict, a)
 
 
 def is_absolute_url(url):
@@ -313,7 +319,7 @@ def request(host, path, url_params=None):
         oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
     signed_url = oauth_request.to_url()
 
-    print u'Querying {0} ...'.format(url)
+    # print u'Querying {0} ...'.format(url)
 
     conn = urllib2.urlopen(signed_url, None)
     try:
@@ -338,258 +344,83 @@ def get_business(business_id):
 ################################
 
 
+
 if __name__=="__main__":
-
-    run_model(CRITERIA, 20)
-
-
-# soup = get_soup(biz,url_set)
-# establishments_dict = get_biz_info(soup, url_set, attribute_set)
-# with open('establishments_dict.json', 'w') as f:
-#         json.dump(establishments_dict, f)
-
-# def add_urls_from_website(object_soup, url_queue, parent_url, url_set):
-#     '''
-#     get all the urls linked to a website and add them to a 
-#     queue of websites to follow. 
-
-#     Inputs:
-#         object_soup : a Beautiful Soup object
-#         url_queue : a queue of websites to visit 
-#         parent_url: the parent url from which you are crawling
-#         url_set: a set of visited urls 
-
-#     Outputs: 
-#         None. Adds urls to the provided url_queue
-#     '''
-#     a_tags = object_soup.find_all("a","")
-#     for tag in a_tags:
-#         tag_url = tag.get("href", "fake_website")
-#         if not util.is_absolute_url(tag_url):
-#             tag_url = util.remove_fragment(tag_url)
-#             tag_url = util.convert_if_relative_url(parent_url, tag_url)
-        
-#         if tag_url != None and tag_url not in url_set and \
-#             util.is_url_ok_to_follow(tag_url, LIMITING_DOMAIN): 
-#             url_queue.put(tag_url)
-
-
-# def go(num_pages_to_crawl, course_map_filename, index_filename):
-#     '''
-#     Crawl the college catalog and generates a CSV file with an index.
-
-#     Inputs:
-#         num_pages_to_crawl: an integer, the number of pages to process during 
-#             the crawl
-#         course_map_filename: a string with the name of a JSON file that contains
-#             the mapping course codes to course identifiers
-#         index_filename: a string with the name for the CSV of the index
-
-#     Outputs: 
-#         CSV file of the index
-#     '''
-
-#     course_index = crawl_website(STARTING_URL, LIMITING_DOMAIN, num_pages_to_crawl)
-#     gen_csv_file(course_index, course_map_filename, index_filename)
-
-#     return course_index
-
-
-# def crawl_website(initial_url, limiting_domain, num_pages_to_crawl):
-#     '''
-#     Inputs:
-#         initial_url: a string with the initial url to follow
-#         limiting_domain: a string with the domain where the crawling should
-#             be limited to
-#         num_pages_to_crawl: an integer to restrict the maximum number of
-#             visited pages
-
-#     Output:
-#         course_index: a dictionary with the course id's of the College 
-#             catalog as keys and their descriptions as items
-#     '''
-
-#     url_queue = queue.Queue() 
-#     url_visits = set() 
-#     course_index = {}
-
-#     url_queue.put(initial_url)
-#     while not url_queue.empty() and len(url_visits) <= num_pages_to_crawl:
-#         website = url_queue.get()
-#         if website not in url_visits:
-#             url_visits.add(website)
-#             website_soup = get_website_soup(website, url_visits)
-#             if website_soup == None:
-#                 pass
-#             else:
-#                 add_urls_from_website(website_soup, url_queue, website, url_visits)
-#                 gen_course_dictionary(website_soup, course_index)
-
-#     return course_index
-
-
-# def get_website_soup(url, url_set): 
-#     '''
-#     get website url as a beautiful soup object
-
-#     Inputs:
-#         url: string representing absolute url of a website 
-#         url_set: a set with the urls that have already been visited
-
-#     Outputs: 
-#         HTML beautiful soup object
-#     '''
-#     if len(url) == 0:
-#         print("url not absolute")
-#         return None
-
-#     else:   
-#         request_attempts = 0 
-#         # Try 3 times to get information from a site 
-#         while request_attempts <= 3:
-#             url_object = util.get_request(url)
-#             if url_object == None:
-#                 request_attempts += 1
-#             elif url_object == None and request_attemtps == 3:
-#                 print("request failed")
-#                 return url_object
-
-#             #Read object and get Beautiful Soup object
-#             else: 
-#                 object_text = util.read_request(url_object)
-#                 object_url = util.get_request_url(url_object)
-#                 url_set.add(object_url) 
-#                 object_soup = bs4.BeautifulSoup(object_text, "html5lib")
-#                 return object_soup
-
-
-# def add_urls_from_website(object_soup, url_queue, parent_url, url_set):
-#     '''
-#     get all the urls linked to a website and add them to a 
-#     queue of websites to follow. 
-
-#     Inputs:
-#         object_soup : a Beautiful Soup object
-#         url_queue : a queue of websites to visit 
-#         parent_url: the parent url from which you are crawling
-#         url_set: a set of visited urls 
-
-#     Outputs: 
-#         None. Adds urls to the provided url_queue
-#     '''
-#     a_tags = object_soup.find_all("a")
-#     for tag in a_tags:
-#         tag_url = tag.get("href", "fake_website")
-#         if not util.is_absolute_url(tag_url):
-#             tag_url = util.remove_fragment(tag_url)
-#             tag_url = util.convert_if_relative_url(parent_url, tag_url)
-        
-#         if tag_url != None and tag_url not in url_set and \
-#             util.is_url_ok_to_follow(tag_url, LIMITING_DOMAIN): 
-#             url_queue.put(tag_url)
-
-
-# def gen_course_dictionary(object_soup, course_index):
-#     '''
-#     get the title of a course and add it as a key to the dictionary
-#     and adds the course description as value
-
-#     Inputs:
-#         object_soup : a Beautiful Soup object
-#         course_index : a dictionary relating a course with words  
-
-#     Outputs: 
-#         None. Updates the provided dictionary 
-#     '''
-
-#     div_tags = object_soup.find_all("div", class_ = "courseblock main")
-#     if len(div_tags) != 0:
-#         for tag in div_tags:
-            
-#             # Get the course title and add it as a key
-#             title_tags = tag.find("p", class_ = "courseblocktitle")
-#             title_string = title_tags.text 
-#             title_string.replace("&#160;"," ")
-#             course_id = re.search("\w* [0-9]*", title_string.replace("\xa0", \
-#                 " ")).group()
-#             course_index[course_id] = course_index.get(course_id, [])
-
-#             # Get the words of the course title and description and add each as
-#             # a value in a list
-#             course_title_words = re.findall('[a-zA-Z][a-zA-Z0-9]+', title_string)
-#             desc_tags = tag.find("p", class_ = "courseblockdesc")
-#             desc_string = desc_tags.text
-#             desc_words = re.findall("[a-zA-Z][a-zA-Z0-9]+", desc_string)
-#             list_words = desc_words + course_title_words
-            
-#             list_sequences = util.find_sequence(tag)
-#             if len(list_sequences) != 0:
-#                 for seq in list_sequences:
-#                     stitle_tags = seq.find("p", class_ = "courseblocktitle")
-#                     stitle_string = stitle_tags.text 
-#                     stitle_string.replace("&#160;", " ")
-#                     scourse_id = re.search("\w* [0-9]*", \
-#                         stitle_string.replace("\xa0", " ")).group()
-#                     course_index[scourse_id] = course_index.get(scourse_id, [])
-#                     sdesc_tags = seq.find("p", class_ = "courseblockdesc")
-#                     sdesc_string = sdesc_tags.text
-#                     slist_words = re.findall("[a-zA-Z][a-zA-Z0-9]+", sdesc_string)
-#                     final_list_words = slist_words + list_words
-#                     for word in final_list_words:
-#                         if word.lower() not in INDEX_IGNORE and word.lower() \
-#                         not in course_index[scourse_id]:
-#                             course_index.get(scourse_id).append(word.lower()) 
-#             else:          
-#                 for word in list_words:
-#                     if word.lower() not in INDEX_IGNORE and word.lower() \
-#                     not in course_index[course_id]:
-#                         course_index.get(course_id).append(word.lower()) 
-            
     
+    
+    INITIAL_WEBSITE = "http://www.yelp.com/"
+    TYPE_ESTABLISHMENT =  ["food","restaurants","beautysvc","active","arts","nightlife","shopping"]
+    NEIGHBORHOODS = ["Beverly", "Brainerd",
+                    "Bridgeport", "Brighton Park", "Bronzeville", "Bucktown", "Burnside",
+                    "Cabrini-Green", "Calumet Heights", "Canaryville", "Chatham", "Chicago Lawn",
+                    "Chinatown"]
+    MISSING = ["Clearing", "Cragin", "DePaul", "Douglas", "Dunning",
+                    "East Garfield Park","East Side", "Edgewater"]
+    DONE_NEIGHBORHOODS = ["Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
+                        "Andersonville", "Archer Heights","Ashburn", "Auburn Gresham",
+                        "Austin", "Avalon Park", "Avondale", "Back of the Yards",
+                        "Magnificent Mile","River North","Logan Square","Belmont Central"]
+    PRICERANGE = [1,2]
+    NUMBER_OF_WEBSITES = 50
 
-# def gen_csv_file(course_index, course_map_filename,index_filename):
-#     '''
-#     This function generates a CSV file with course ID and the words
-#     associated to that course ID
+    criteria_dict = {}
+    number_criteria = 0
+    for neighborhood in NEIGHBORHOODS:
+        for establishment in TYPE_ESTABLISHMENT:
+            for price in PRICERANGE:
+                criteria_dict[number_criteria] = {"neighborhood": neighborhood, "establishment": establishment, "price_range": price}
+                number_criteria += 1
+    
+    #Cuando falla activar este codigo para empezar desde el x diccionario
+    # list_visited = range(40)
+    # for i in list_visited:
+    #     criteria_dict.pop(i, None)
 
-#     Inputs:
-#         course_index: a dictionary linking courses to words
-#         course_map_filename: a JSON file
-#         index_filename: the name of the CSV file 
+    attributes_set = set()
+    for criteria in criteria_dict.values():
+        print("######{criteria}#######".format(criteria = criteria))
+        filename = "{x}_dict.json".format(x = criteria["neighborhood"])
+        run_model(criteria, NUMBER_OF_WEBSITES, filename, attributes_set)
 
-#     Outputs:
-#         A CSV file
-#     '''
-
-#     with open(course_map_filename) as map_filename:   
-#         json_data = json.load(map_filename)
-
-#     with open(index_filename, "w") as csv_file:
-#         writer = csv.writer(csv_file, delimiter = '|')
-#         for course_title in list(course_index.keys()):
-#             for word in course_index[course_title]:
-#                 course_code = json_data[course_title] 
-#                 writer.writerow([course_code, word])
-
-#     return index_filename
+    attributes_set_dict = {}
+    for key, value in list(attributes_set):
+        attr_list = attributes_set_dict.get(key,[])
+        attr_list.append(value)
+        attributes_set_dict[key] = attr_list
+    
+    with open('attributes_dict.json', "w") as c:
+        json.dump(attributes_set_dict,c)
+ 
+#Museums not included
+#Limits to business 50
+#Do not consider business without price, comments or rating
 
 
-# if __name__ == "__main__":
-#     usage = "python3 crawl.py <number of pages to crawl>"
-#     args_len = len(sys.argv)
-#     course_map_filename = "course_map.json"
-#     index_filename = "catalog_index.csv"
-#     if args_len == 1:
-#         num_pages_to_crawl = 1000
-#     elif args_len == 2:
-#         try:
-#             num_pages_to_crawl = int(sys.argv[1])
-#         except ValueError:
-#             print(usage)
-#             sys.exit(0)
-#     else:
-#         print(usage)    
-#         sys.exit(0)
+# with open("Pilsen_dict.json", "r") as b:
+#     y = json.load(b)
 
-#     go(num_pages_to_crawl, course_map_filename, index_filename)
-
+# ["Andersonville", "Archer Heights",
+# "Ashburn", "Auburn Gresham", "Austin", "Avalon Park", "Avondale", 
+# Back of the Yards, Belmont Central, Beverly, Brainerd,
+# Bridgeport, Brighton Park, Bronzeville, Bucktown, Burnside,
+# Cabrini-Green, Calumet Heights, Canaryville, Chatham, Chicago Lawn,
+# Chinatown, Clearing, Cragin, DePaul, Douglas, Dunning,
+# East Garfield Park, East Side, Edgewater, //Edison Park, Englewood,
+# Forest Glen, Fulton Market, Gage Park, Galewood, Garfield Ridge,
+# Gold Coast, Goose Island, Grand Boulevard, Greater Grand Crossing,
+# Greektown, Hegewisch, Hermosa, Humboldt Park, 
+# Irving Park, Jefferson Park, Jeffery Manor, Kenwood, Lakeview,
+# Lawndale, Lincoln Park, Lincoln Square, Little Village,
+# Logan Square, Magnificent Mile, Marquette Park, McKinley Park,
+# Montclare, Morgan Park, Mount Greenwood, Near North Side,
+# Near Southside, Near West Side, New City, Noble Square,
+# North Center, North Park, Norwood Park, O'Hare, Oakland,
+# Old Town, Portage Park, Printer's Row, Pullman,
+# Ravenswood, River East, River North, River West, Riverdale,
+# Rogers Park, Roscoe Village, Roseland, Sauganash, Scottsdale,
+# South Chicago, South Deering, South Shore,
+# Streeterville, Tri-Taylor, Ukrainian Village,
+# University Village, Uptown, Washington Heights, Washington Park,
+# West Elsdon, West Englewood, West Garfield Park, West Lawn,
+# West Loop, West Pullman, West Rogers Park, West Town,
+# Woodlawn, Wrigleyville]]
