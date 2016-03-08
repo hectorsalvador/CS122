@@ -15,7 +15,7 @@ import urllib
 import urllib2
 import requests
 import datetime
-
+import requests
 import oauth2
 import cgi
 
@@ -25,6 +25,24 @@ def get_soup(url, url_set):
     soup = BeautifulSoup(html,"html.parser")
     url_set.add(url) 
     return soup
+
+    # proxy = urllib2.ProxyHandler( {'http': url} )
+    # # Create an URL opener utilizing proxy
+    # opener = urllib2.build_opener( proxy )
+    # urllib2.install_opener( opener )
+    # request = urllib2.Request( url )
+    # response = urllib.urlopen( request )
+
+    # # Aquire data from URL
+    # html = response.read()
+    # return request
+    # proxies = {
+    # 'http': 'http://107.190.165.47'}
+    # r = requests.get(url, proxies = proxies)
+    # r.text.encode('iso-8859-1')
+    # object_soup = bs4.BeautifulSoup(object_text, "html5lib")
+
+    # return object_soup
 
 def create_website(criteria):
     '''
@@ -189,16 +207,32 @@ def run_model(criteria, num_pages_to_crawl,filename, attributes_set):
                 biz_id = re.search("(biz/)(.+)(\?*)", current_url).group(2)
             else:
                 biz_id = re.search("(biz/)(.+)(\?+)", current_url).group(2)
+            print(biz_id)
             
             try:
                 api_dict[biz_id] = get_business(biz_id)
-                biz_dict["categories"] = api_dict[biz_id]["categories"]
-                biz_dict["address"] = api_dict[biz_id]["location"]["address"]
-                biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
-                biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
-                biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
             except:
                 print("API failed")
+            try:
+                biz_dict["categories"] = api_dict[biz_id]["categories"]
+            except:
+                print("categories failed")
+            try:    
+                biz_dict["address"] = api_dict[biz_id]["location"]["address"]
+            except:
+                print("address failed")
+            try:
+                biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
+            except:
+                print("neighborhoods failed")
+            try:        
+                biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
+            except:
+                print("latitude failed")
+            try:
+                biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
+            except:
+                print("longitude failed")
 
             try:
                 with open(filename, "r") as b:
@@ -350,18 +384,31 @@ if __name__=="__main__":
     
     INITIAL_WEBSITE = "http://www.yelp.com/"
     TYPE_ESTABLISHMENT =  ["food","restaurants","beautysvc","active","arts","nightlife","shopping"]
-    NEIGHBORHOODS = ["Beverly", "Brainerd",
-                    "Bridgeport", "Brighton Park", "Bronzeville", "Bucktown", "Burnside",
-                    "Cabrini-Green", "Calumet Heights", "Canaryville", "Chatham", "Chicago Lawn",
-                    "Chinatown"]
-    MISSING = ["Clearing", "Cragin", "DePaul", "Douglas", "Dunning",
-                    "East Garfield Park","East Side", "Edgewater"]
+    NEIGHBORHOODS = ["Englewood",
+"Forest Glen", "Fulton Market", "Gage Park", 'Galewood', "Garfield Ridge",
+"Gold Coast", 'Goose Island', 'Grand Boulevard', 'Greater Grand Crossing',
+"Greektown", "Hegewisch", "Hermosa", "Humboldt Park", 
+"Irving Park", "Jefferson Park", "Jeffery Manor", "Kenwood", "Lakeview",
+"Lawndale", "Lincoln Park", "Lincoln Square", "Little Village"]
+    MISSING = ["Marquette Park", "McKinley Park",
+"Montclare", "Morgan Park", "Mount Greenwood", "Near North Side",
+"Near Southside", "Near West Side", "New City", "Noble Square",
+"North Center", "North Park", "Norwood Park", "O'Hare", "Oakland",
+"Old Town", "Portage Park", "Printer's Row", "Pullman",
+"Ravenswood", "River East"]
     DONE_NEIGHBORHOODS = ["Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
                         "Andersonville", "Archer Heights","Ashburn", "Auburn Gresham",
                         "Austin", "Avalon Park", "Avondale", "Back of the Yards",
-                        "Magnificent Mile","River North","Logan Square","Belmont Central"]
+                        "Magnificent Mile","River North","Logan Square","Belmont Central",
+                        "Beverly", "Brainerd",
+                        "Bridgeport", "Brighton Park", "Bronzeville", "Bucktown", "Burnside",
+                        "Cabrini-Green", "Calumet Heights", "Canaryville", "Chatham", "Chicago Lawn",
+                        "Chinatown", "Clearing", "Cragin", "DePaul", "Douglas", "Dunning",
+                    "East Garfield Park","East Side", "Edgewater","Edison Park",]
     PRICERANGE = [1,2]
     NUMBER_OF_WEBSITES = 50
+
+
 
     criteria_dict = {}
     number_criteria = 0
@@ -391,12 +438,13 @@ if __name__=="__main__":
     with open('attributes_dict.json', "w") as c:
         json.dump(attributes_set_dict,c)
  
-#Museums not included
-#Limits to business 50
-#Do not consider business without price, comments or rating
+
+# #Museums not included
+# #Limits to business 50
+# #Do not consider business without price, comments or rating
 
 
-# with open("Pilsen_dict.json", "r") as b:
+# with open("East Side_dict.json", "r") as b:
 #     y = json.load(b)
 
 # ["Andersonville", "Archer Heights",
@@ -416,7 +464,7 @@ if __name__=="__main__":
 # Near Southside, Near West Side, New City, Noble Square,
 # North Center, North Park, Norwood Park, O'Hare, Oakland,
 # Old Town, Portage Park, Printer's Row, Pullman,
-# Ravenswood, River East, River North, River West, Riverdale,
+# Ravenswood, River East, River West, Riverdale,
 # Rogers Park, Roscoe Village, Roseland, Sauganash, Scottsdale,
 # South Chicago, South Deering, South Shore,
 # Streeterville, Tri-Taylor, Ukrainian Village,
