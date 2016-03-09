@@ -208,7 +208,7 @@ def map_url(best_biz):
 		i += 1
 
 	markers = "&".join(markers_list)
-	key = "key=AIzaSyCyV611rvT1sv6CHSxy9HOexs6iznpPZPA"
+	key = "key=AIzaSyCyV611rvT1sv6CHSxy9HOexs6iznpPZPA" #put key in private file
 	url_end = "&".join([size, maptype, markers, key])
 	url = url_init + url_end
 
@@ -424,7 +424,7 @@ class Biz(object):
 		self._score = score
 
 ##################################
-#####                        #####
+#####          GO            #####
 ##################################
 
 if __name__ == "__main__":
@@ -434,3 +434,9 @@ if __name__ == "__main__":
 	best = go(filename, categories, matching_words, 1000, 1800, "Tue")
 	url = map_url(best)
 	print(url)
+
+#Stuff we found on the project:
+#got banned from yelp
+#took too long to retrieve all the comments
+#decided instead to take a simplified approach
+#google static maps api
