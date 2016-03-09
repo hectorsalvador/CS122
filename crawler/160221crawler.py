@@ -384,19 +384,20 @@ if __name__=="__main__":
     
     INITIAL_WEBSITE = "http://www.yelp.com/"
     TYPE_ESTABLISHMENT =  ["food","restaurants","beautysvc","active","arts","nightlife","shopping"]
-    NEIGHBORHOODS = ["Englewood",
-"Forest Glen", "Fulton Market", "Gage Park", 'Galewood', "Garfield Ridge",
-"Gold Coast", 'Goose Island', 'Grand Boulevard', 'Greater Grand Crossing',
-"Greektown", "Hegewisch", "Hermosa", "Humboldt Park", 
-"Irving Park", "Jefferson Park", "Jeffery Manor", "Kenwood", "Lakeview",
-"Lawndale", "Lincoln Park", "Lincoln Square", "Little Village"]
+    NEIGHBORHOODS = ["Lincoln Square", "Little Village"]
     MISSING = ["Marquette Park", "McKinley Park",
 "Montclare", "Morgan Park", "Mount Greenwood", "Near North Side",
 "Near Southside", "Near West Side", "New City", "Noble Square",
 "North Center", "North Park", "Norwood Park", "O'Hare", "Oakland",
 "Old Town", "Portage Park", "Printer's Row", "Pullman",
 "Ravenswood", "River East"]
-    DONE_NEIGHBORHOODS = ["Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
+    DONE_NEIGHBORHOODS = ["Garfield Ridge","Lincoln Park","Gold Coast", 'Goose Island', 'Grand Boulevard',
+                          'Greater Grand Crossing',"Greektown", "Hegewisch",
+                          "Hermosa", "Humboldt Park", "Irving Park",
+                          "Jefferson Park", "Jeffery Manor", "Kenwood",
+                          "Lakeview","Lawndale", "Englewood","Forest Glen",
+                          "Fulton Market", "Gage Park", 'Galewood',
+                        "Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
                         "Andersonville", "Archer Heights","Ashburn", "Auburn Gresham",
                         "Austin", "Avalon Park", "Avondale", "Back of the Yards",
                         "Magnificent Mile","River North","Logan Square","Belmont Central",
