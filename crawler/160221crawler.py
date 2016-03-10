@@ -384,6 +384,13 @@ if __name__=="__main__":
     
     INITIAL_WEBSITE = "http://www.yelp.com/"
     TYPE_ESTABLISHMENT =  ["food","restaurants","beautysvc","active","arts","nightlife","shopping"]
+<<<<<<< HEAD
+    NEIGHBORHOODS = [ "Uptown", "Washington Heights", "Washington Park","West Elsdon", "West Englewood",
+               "West Garfield Park", "West Lawn","West Loop", "West Pullman", "West Rogers Park", "West Town",
+               "Woodlawn", "Wrigleyville"]
+    MISSING = ["Lincoln Park", "Lincoln Square", "Little Village"]
+    DONE_NEIGHBORHOODS = ["Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
+=======
     NEIGHBORHOODS = ["Lincoln Square", "Little Village"]
     MISSING = ["Marquette Park", "McKinley Park",
 "Montclare", "Morgan Park", "Mount Greenwood", "Near North Side",
@@ -398,6 +405,7 @@ if __name__=="__main__":
                           "Lakeview","Lawndale", "Englewood","Forest Glen",
                           "Fulton Market", "Gage Park", 'Galewood',
                         "Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
+>>>>>>> origin/master
                         "Andersonville", "Archer Heights","Ashburn", "Auburn Gresham",
                         "Austin", "Avalon Park", "Avondale", "Back of the Yards",
                         "Magnificent Mile","River North","Logan Square","Belmont Central",
@@ -405,7 +413,21 @@ if __name__=="__main__":
                         "Bridgeport", "Brighton Park", "Bronzeville", "Bucktown", "Burnside",
                         "Cabrini-Green", "Calumet Heights", "Canaryville", "Chatham", "Chicago Lawn",
                         "Chinatown", "Clearing", "Cragin", "DePaul", "Douglas", "Dunning",
-                    "East Garfield Park","East Side", "Edgewater","Edison Park",]
+                        "East Garfield Park","East Side", "Edgewater","Edison Park", 1,
+                        "Englewood","Forest Glen", "Fulton Market", "Gage Park", 'Galewood', "Garfield Ridge",
+                        "Gold Coast", 'Goose Island', 'Grand Boulevard', 'Greater Grand Crossing',
+                        "Greektown", "Hegewisch", "Hermosa", "Humboldt Park", 
+                        "Irving Park", "Jefferson Park", "Jeffery Manor", "Kenwood", "Lakeview",
+                        "Lawndale", "Lincoln Park", "Lincoln Square", "Little Village",1,
+                          "Marquette Park","McKinley Park",
+                        "Montclare", "Morgan Park", "Mount Greenwood", "Near North Side",
+                        "Near Southside", "Near West Side", "New City", "Noble Square",
+                        "North Center", "North Park", "Norwood Park", "O'Hare", "Oakland",
+                        "Old Town", "Portage Park", "Printer's Row", "Pullman",
+                        "Ravenswood", "River East","River West", "Riverdale", "Rogers Park",
+                        "Roscoe Village","Roseland", "Sauganash", "Scottsdale",
+                        "South Chicago", "South Deering","South Shore","Streeterville",
+                          "Tri-Taylor", "Ukrainian Village", "University Village",]
     PRICERANGE = [1,2]
     NUMBER_OF_WEBSITES = 50
 
