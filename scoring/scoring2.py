@@ -1,5 +1,3 @@
-##
-##
 ## Read json files containing information of businesses on each neighborhood
 ## Assign scores to each establishment
 
@@ -9,67 +7,48 @@ import queue    			#check that name is "Queue" with Python 2.7
 from datetime import date
 from math import radians, degrees, cos, sin, asin, atan2, sqrt
 
-## We have to check how will min and max times will work
-## they are in the filter_businesses function
-
+KEY_FILE = "gsm_key.txt"
 MONTH_DAYS = 30
 RATING_SCORE_ADJ = 1 / 5
 MAX_SCORE = 1
 PM_HOURS = 1200
-DEGREES_IN_PI_RADIANS = 180
 EARTH_RADIUS = 6371 # KM. Use 3956 for miles.
 HORZ = 512
 VERT = 512
 
-def go(filename, categories, matching_words, min_hour, max_hour, day):
+def go(filename, categories, day, matching_words = [], min_hour = - 1, \
+	max_hour = - 1):
 	'''
 	'''
 	biz_list = create_biz_list(filename)
 	assign_scores(biz_list, matching_words)
-	filtered_biz_list = filter_businesses(biz_list, categories, min_hour, \
-		max_hour, day)
+	filtered_biz_list = filter_businesses(biz_list, categories, day, min_hour,\
+		max_hour)
 	best_biz = best_biz_by_categories(filtered_biz_list, categories)
-
 	return best_biz
 
 def create_biz_list(filename):
 	'''
 	Inputs:
 		A string with the path to a json file with information on businesses 
-
 	Output:
 		A list of Biz objects, containing the information of businesses in the
 		given json file
 	'''
-	biz_list = []
-
 	with open(filename) as d:
 		data = json.load(d)
 
+	biz_list = []
 	for biz in data:
 		neighborhoods = data[biz].get("neighborhoods", None)
-		# print(type(neighborhoods))
 		price = data[biz].get("price", None)
-		# print(type(price))
 		comments = data[biz].get("comments", None)
-		# print(type(comments))
 		times = data[biz].get("times", None)
-		# print(type(times))
 		lat = data[biz].get("latitude", None)
-		# if lat == None:
-		# 	print(biz)
 		lon = data[biz].get("longitude", None)
-		# print(type(lon))
-		attributes = data[biz].get("attributes", None)
-		# print(type(attributes))
-		if attributes != None:
-			attributes = attributes.get("Ambience", None)
-		#attributes is only getting "Ambience", should we include further
-		#options for attributes?
+		attributes = import_attributes(data[biz])
 		categories = data[biz].get("categories", None)
-		# print(type(categories))
 		address = data[biz].get("address", None)
-		# print(type(address))
 		if None in [neighborhoods, price, comments, times, lat, lon, \
 			attributes, categories, address]:
 			pass
@@ -77,18 +56,19 @@ def create_biz_list(filename):
 			biz = Biz(biz, neighborhoods, price, comments, times, lat, lon, \
 				attributes, categories, address)
 			biz_list.append(biz)
-
 	return biz_list
 
-def assign_scores(biz_list, matching_words, verbose = False):
-	for biz in biz_list:
-		biz._set_score(score(biz, biz_list, matching_words, verbose))
+def assign_scores(biz_list, matching_words):
+	'''
+	'''
+	if len(biz_list) != 0:
+		for biz in biz_list:
+			biz._set_score(score(biz, biz_list, matching_words))
 
-def filter_businesses(biz_list, categories, min_hour, max_hour, day, 
-	verbose = False):
+def filter_businesses(biz_list, categories, day, min_hour, max_hour):
 	'''
 	Inputs:
-		biz_list, a list of Biz objects
+		biz_list, a list of Biz objects 
 		categories, a list of strings referring to desired businesses 
 			(e.g ["delis", "cafes", "museums"])
 		min_hour, an int in 0000 format (e.g. 6:00 AM is 0600)
@@ -96,81 +76,52 @@ def filter_businesses(biz_list, categories, min_hour, max_hour, day,
 		day, a string indicating the day (e.g. "Mon", "Sat")
 	'''
 	new_biz_list = []
-	i = 0
+
+	if len(biz_list) == 0:
+		return new_biz_list
+
 	for biz in biz_list:
-		if verbose:
-			print("Checking {}..".format(biz.name))
-			print("  Categories: {}".format(biz.categories))
 		dummy = False
+
 		if len(biz.categories) > 1:
 			for elem in biz.categories:
 				if any(i in categories for i in elem):
 					dummy = True
-					if verbose:
-						print("   {}".format(dummy))
 		else:
 			if any(i in categories for i in biz.categories):
-				if verbose:
-					print("   {}".format(dummy))
 				dummy = True
 
 		if dummy:
-			if verbose:
-				print("   Times: {}".format(biz.times))
-			if (biz.times == None) or (len(biz.times[day]) == 0):
-				i += 1
-				if verbose:
-					print("  No times or schedule: {}".format(i))
-					print("    Adding {} to the list".format(biz.name))
+			if (max_hour == -1) and (min_hour == -1):
+				new_biz_list.append(biz)
+			elif (biz.times == None) or (len(biz.times[day]) == 0):
 				new_biz_list.append(biz)
 			elif (max_hour >= hourize(biz.times[day][0])) and \
 			(min_hour <= hourize(biz.times[day][1])):
-				if verbose:
-					print("  {} has times and schedule.".format(biz.name))
-					print("    Adding {} to list.".format(biz))
 				new_biz_list.append(biz)
-		else:
-			if verbose:
-				print("    Not in categories.")
 
-	if verbose:
-		print([biz.name for biz in new_biz_list])
 	return new_biz_list
 
-def best_biz_by_categories(new_biz_list, categories, verbose = False):
+def best_biz_by_categories(new_biz_list, categories):
+	'''
+	'''
 	d = {}
+	if len(new_biz_list) == 0:
+		return d
+
 	for category in categories:
 		d.setdefault(category, queue.PriorityQueue(3))
 	for biz in new_biz_list:
-		if verbose:
-			print("Checking {}".format(biz.name))
 		for category in biz.categories:
 			if category[0] in categories:
-				if verbose:
-					print("   Is {}".format(category[0]))
 				if not d[category[0]].full():
-					if verbose:
-						print("      Adding {} to {} queue.".format(biz.name,\
-							category[0]))
-						print("      Score: {}".format(biz.score))
 					d[category[0]].put((biz.score, biz))
 				else:
 					lowest_biz = d[category[0]].get()
 					if biz.score > lowest_biz[0]:
 						d[category[0]].put((biz.score, biz))
-						if verbose:
-							print("      Adding {} to {} queue.".format(\
-								biz.name, category[0]))
-							print("      Score: {}".format(biz.score))
 					else:
 						d[category[0]].put(lowest_biz)
-						if verbose:
-							print("      {} was not added to {} queue.".format(\
-								biz.name, category[0]))
-							print("      Score: {}".format(biz.score))
-			else:
-				if verbose:
-					print("   Not looking for {}".format(category[0]))
 	dprime = {}
 	for key in d.keys():
 		dprime.setdefault(key, [])
@@ -178,11 +129,11 @@ def best_biz_by_categories(new_biz_list, categories, verbose = False):
 		while not d[key].empty():
 			dprime[key].append((d[key].get(), i))	
 			i = i - 1
-
 	return dprime
 
 def map_url(best_biz):
-
+	'''
+	'''
 	# Valid colors taken from Google Static Maps API
 	COLORS = ["red", "green", "purple", "yellow", "blue", "orange",\
 	"gray", "white", "black", "brown"]
@@ -208,49 +159,79 @@ def map_url(best_biz):
 		i += 1
 
 	markers = "&".join(markers_list)
-	key = "key=AIzaSyCyV611rvT1sv6CHSxy9HOexs6iznpPZPA" #put key in private file
+	f = open(KEY_FILE, "r")
+	key = "key={}".format(f.readline()) 
 	url_end = "&".join([size, maptype, markers, key])
 	url = url_init + url_end
-
 	return url
 
 ##################################
 #####    Helper functions    #####
 ##################################
 
-def score(biz, biz_list, matching_words, verbose = False):
+def print_output(biz_list):
+	best_list = []
+	for key, value in biz_list.items():
+		for biz in value:
+			best_list.append([key, biz[1], biz[0][1].name, biz[0][1].address[0]])
+			print("Category: {}, Business {}: {}, Address: {}, ".format(\
+				key, biz[1], biz[0][1].name, biz[0][1].address[0]))
+	return best_list
+
+def import_attributes(biz_dict):
+	'''
+	'''
+	attributes = biz_dict.get("attributes", None)
+	rv = []
+	if attributes == None:
+		return attributes
+	else:
+		for key, value in attributes.items():
+			if value == "Yes":
+				rv.append(key)
+			elif key == "Ambience":
+				if type(attributes["Ambience"]) == list:
+					for i in attributes["Ambience"]:
+						rv.append(i)
+				else:
+					rv.append(attributes["Ambience"])
+			elif value != "No":
+				rv.append("{} {}".format(key, value))
+		return rv
+
+def score(biz, biz_list, matching_words):
 	'''
 	'''
 	rating = calculate_score_ratings(biz)
 	price = calculate_score_price(biz)
 	match = calculate_score_matches(biz, matching_words)
 	dist = calculate_score_distance(biz, biz_list)
-
-	if verbose:
-		print("Rating score: {}".format(rating))
-		print("Price score: {}".format(price))
-		print("Match score: {}".format(match))
-		print("Distance score: {}".format(dist))
-
 	return rating + price + match + dist
 
 def calculate_score_ratings(biz):
 	'''
+	if no comments, it doesn't load into the .json
 	'''
 	today = date.today()
 	sum_weights = 0
 	rv = 0
-	for comment in biz.comments:
-		d = biz.comments[comment]["date"]
-		c_date = date(d[0], d[1], d[2])
-		diff = int(str(today - c_date).split()[0])
-		weight = min(1, MONTH_DAYS / diff)
-		sum_weights += weight
-		weighted_rating = weight * int(biz.comments[comment]["rating"])
-		rv += weighted_rating
-	return rv / sum_weights * RATING_SCORE_ADJ
+	if len(biz.comments) != 0:
+		for comment in biz.comments:
+			d = biz.comments[comment]["date"]
+			c_date = date(d[0], d[1], d[2])
+			diff = int(str(today - c_date).split()[0])
+			weight = min(1, MONTH_DAYS / diff)
+			sum_weights += weight
+			weighted_rating = weight * int(biz.comments[comment]["rating"])
+			rv += weighted_rating
+		return rv / sum_weights * RATING_SCORE_ADJ
+	else:
+		return 0
 
 def calculate_score_price(biz):
+	'''
+	If no "$", it doesn't load into the .json
+	'''
 	price_range = len(biz.price)
 	if price_range == 1:
 		return MAX_SCORE
@@ -352,6 +333,8 @@ def haversine_distance(lon0, lat0, lon1, lat1):
     return c * EARTH_RADIUS
 
 def hourize(time_str):
+	'''
+	'''
 	dummy1 = time_str.split()
 	dummy2 = dummy1[0].split(":")
 	hour = int(dummy2[0]+dummy2[1])
@@ -429,11 +412,20 @@ class Biz(object):
 
 if __name__ == "__main__":
 	filename = 'The Loop_dict.json'
-	categories = ['Delis', 'Bagels', 'Museums', 'Middle Eastern']
-	matching_words = ['Casual']
-	best = go(filename, categories, matching_words, 1000, 1800, "Tue")
-	url = map_url(best)
-	print(url)
+	c1 = ['Delis']
+	mw1 = []
+	b1 = go(filename, c1, "Tue", mw1, 1000, 1800)
+	url1 = map_url(b1)
+	print(url1)
+	rv1 = print_output(b1)
+
+	mw2 = ['Casual', 'Take-out', 'Caters', 'Good for Kids']
+	c2 = ['Delis']
+	b2 = go(filename, c2, "Tue", mw2)
+	url2 = map_url(b2)
+	print(url2)
+	rv2 = print_output(b2)
+
 
 #Stuff we found on the project:
 #got banned from yelp
