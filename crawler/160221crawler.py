@@ -1,4 +1,4 @@
-# v 0.1 for Python 2.7
+# Version for Python 2.7 10/Mat/2016
 # Carlos O. Grandet Caballero
 # Hector Salvador Lopez
 
