@@ -3,7 +3,7 @@
 
 import json
 import numpy
-import queue    			#check that name is "Queue" with Python 2.7
+import queue    			
 from datetime import date
 from math import radians, degrees, cos, sin, asin, atan2, sqrt
 import os
@@ -17,9 +17,10 @@ PM_HOURS = 1200
 EARTH_RADIUS = 6371 # KM. Use 3956 for miles.
 HORZ = 512
 VERT = 512
-PATH_1 = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/neigborhoods'
-PATH_2 = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/scoring'
-DAY_DICT = {"Monday":"Mon","Tuesday":"Tue","Wednesday":"Wed","Thursday":"Thu","Friday":"Fri","Saturday":"Sat","Sunday":"Sun"}
+PATH_1 = '/Users/Hector/Documents/Git/CS122/cs_project/ui/neigborhoods'
+PATH_2 = '/Users/Hector/Documents/Git/CS122/cs_project/ui/scoring'
+DAY_DICT = {"Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed", \
+"Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun"}
 
 args1 = args_to_ui = {
   "time_start": 900,
@@ -39,14 +40,17 @@ args1 = args_to_ui = {
 }
 
 def run_score(args_from_ui):
+    '''
+    ORIGINAL
+    '''
     neigh_name = args_from_ui["neigh"]
-    filename = neigh_name+"_dict.json"
+    filename = neigh_name + "_dict.json"
     categories = args_from_ui["est"]
     day_formal = args_from_ui["day"]
     day = DAY_DICT[day_formal] 
     matching_words = args_from_ui.get("attr_rest",[])
-    min_hour = args_from_ui.get("time_start",-1)
-    max_hour = args_from_ui.get("time_end",-1)
+    min_hour = args_from_ui.get("time_start", -1)
+    max_hour = args_from_ui.get("time_end", -1)
     results = go(filename,categories,day,matching_words,min_hour,max_hour)
     print(results)
     url, color_label = map_url(results)
@@ -58,6 +62,7 @@ def run_score(args_from_ui):
 def go(filename, categories, day, matching_words = [], min_hour = - 1, \
 	max_hour = - 1):
 	'''
+	ORIGINAL
 	'''
 	biz_list = create_biz_list(filename)
 	assign_scores(biz_list, matching_words)
@@ -68,6 +73,7 @@ def go(filename, categories, day, matching_words = [], min_hour = - 1, \
 
 def create_biz_list(filename):
 	'''
+	ORIGINAL
 	Inputs:
 		A string with the path to a json file with information on businesses 
 	Output:
@@ -89,7 +95,7 @@ def create_biz_list(filename):
 		lon = data[biz].get("longitude", None)
 		attributes = import_attributes(data[biz])
 		category = data[biz].get("category", None)
-		address = [import_address(data[biz])]
+		address = import_address(data[biz])
 		if None in [neighborhoods, price, comments, times, lat, lon, \
 			attributes, category, address]:
 			count_b += 1
@@ -105,6 +111,7 @@ def create_biz_list(filename):
 
 def assign_scores(biz_list, matching_words):
 	'''
+	ORIGINAL
 	'''
 	if len(biz_list) != 0:
 		for biz in biz_list:
@@ -112,6 +119,7 @@ def assign_scores(biz_list, matching_words):
 
 def filter_businesses(biz_list, categories, day, min_hour, max_hour):
 	'''
+	ORIGINAL
 	Inputs:
 		biz_list, a list of Biz objects 
 		categories, a list of strings referring to desired businesses 
@@ -142,6 +150,7 @@ def filter_businesses(biz_list, categories, day, min_hour, max_hour):
 
 def best_biz_by_categories(new_biz_list, categories):
 	'''
+	ORIGINAL
 	'''
 	d = {}
 	if len(new_biz_list) == 0:
@@ -171,6 +180,7 @@ def best_biz_by_categories(new_biz_list, categories):
 
 def map_url(best_biz):
 	'''
+	ORIGINAL
 	'''
 	# Valid colors taken from Google Static Maps API
 	COLORS = ["red", "green", "purple", "yellow", "blue", "orange",\
@@ -212,6 +222,9 @@ def map_url(best_biz):
 ##################################
 
 def print_output(biz_list):
+	'''
+	ORIGINAL
+	'''
 	best_list = []
 	for key, value in biz_list.items():
 		for biz in value:
@@ -222,6 +235,9 @@ def print_output(biz_list):
 
 
 def gen_table(biz_dict):
+	'''
+	ORIGINAL
+	'''
 	headers = ["Category", "Ranking", "Business", "Address"]
 	best_list = []
 	for key, value in biz_dict.items():
@@ -235,6 +251,7 @@ def gen_table(biz_dict):
 
 def import_attributes(biz_dict):
 	'''
+	ORIGINAL
 	'''
 	attributes = biz_dict.get("attributes", None)
 	rv = []
@@ -259,12 +276,27 @@ def import_attributes(biz_dict):
 		return rv
 
 def import_address(biz_dict):
+	'''
+	ORIGINAL
+	biz_dict is a dictionary with elements related to a business
+	'''
 	address = biz_dict.get("address", None)
-	if address != None and len(address) != 0:
-		return address[0]
+	number = '[1-9]+[0-9]*'
+	card_pt = '[NSEW]'
+	street_name = '[A-Z][ A-Za-z]*'
+	street_type = '[A-Z][a-z]+'
+	valid_address = ' '.join([number, card_pt, street_name, street_type])
+	if address == None or len(address) == 0 or \
+		len(re.findall(valid_address, address[0])) == 0:
+		return None
+	elif re.findall(valid_address, address[0])[0] != address[0]:
+		return None
+	else:
+		return address
 
 def score(biz, biz_list, matching_words):
 	'''
+	ORIGINAL
 	'''
 	rating = calculate_score_ratings(biz)
 	price = calculate_score_price(biz)
@@ -274,6 +306,7 @@ def score(biz, biz_list, matching_words):
 
 def calculate_score_ratings(biz):
 	'''
+	ORIGINAL
 	if no comments, it doesn't load into the .json
 	'''
 	today = date.today()
@@ -294,6 +327,7 @@ def calculate_score_ratings(biz):
 
 def calculate_score_price(biz):
 	'''
+	ORIGINAL
 	If no "$", it doesn't load into the .json
 	'''
 	price_range = len(biz.price)
@@ -304,7 +338,7 @@ def calculate_score_price(biz):
 
 def calculate_score_distance(biz, biz_list):
 	'''
-
+	ORIGINAL
 	'''
 	center = find_biz_weighted_centroid(biz_list)
 	max_dist = calculate_farthest_biz(center, biz_list)
@@ -316,6 +350,7 @@ def calculate_score_distance(biz, biz_list):
 
 def calculate_score_matches(biz, matching_words):
 	'''
+	ORIGINAL
 	'''
 	tot = len(matching_words)
 	score = 0
@@ -331,6 +366,9 @@ def calculate_score_matches(biz, matching_words):
 
 def find_biz_weighted_centroid(biz_list):
 	'''
+	ORIGINAL
+	Followed instructions from: http://www.geomidpoint.com/calculation.html
+
 	Inputs:
 		biz_list, is a list of Biz objects
 	Returns:
@@ -368,6 +406,7 @@ def find_biz_weighted_centroid(biz_list):
 
 def calculate_farthest_biz(center, biz_list):
 	'''
+	ORIGINAL
 	center is a tuple with (lat, lon)
 	biz_list, a list of Biz objects used to calculate distance score
 	'''
@@ -386,8 +425,10 @@ def calculate_farthest_biz(center, biz_list):
 
 def haversine_distance(lon0, lat0, lon1, lat1):
     '''
+    DIRECT COPY - PA 2: Course Search Engine Part 1
     Calculate the great circle distance between two points 
     on the earth (specified in decimal degrees)
+
     '''
     lon0, lat0, lon1, lat1 = map(radians, [lon0, lat0, lon1, lat1])
     dlon = lon1 - lon0
@@ -398,6 +439,7 @@ def haversine_distance(lon0, lat0, lon1, lat1):
 
 def hourize(time_str):
 	'''
+	ORIGINAL
 	'''
 	dummy1 = time_str.split()
 	dummy2 = dummy1[0].split(":")
@@ -408,7 +450,7 @@ def hourize(time_str):
 		return hour + PM_HOURS
 
 ##################################
-#####       Biz class        #####
+#####  Biz class: ORIGINAL   #####
 ##################################
 
 class Biz(object):
@@ -469,31 +511,3 @@ class Biz(object):
 
 	def _set_score(self, score):
 		self._score = score
-
-##################################
-#####          GO            #####
-##################################
-
-# if __name__ == "__main__":
-# 	filename = 'The Loop_dict.json'
-# 	c1 = ['Delis','Bagels']
-# 	mw1 = []
-# 	b1 = go(filename, c1, "Tue", mw1, 1000, 1800)
-# 	url1 = map_url(b1)
-# 	print(url1)
-# 	rv1 = print_output(b1)
-
-# 	mw2 = ['Casual', 'Take-out', 'Caters', 'Good for Kids']
-# 	c2 = ['Delis']
-# 	b2 = go(filename, c2, "Tue", mw2)
-# 	url2 = map_url(b2)
-# 	print(url2)
-# 	rv2 = print_output(b2)
-
-
-
-#Stuff we found on the project:
-#got banned from yelp
-#took too long to retrieve all the comments
-#decided instead to take a simplified approach
-#google static maps api
