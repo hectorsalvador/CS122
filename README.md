@@ -1,7 +1,8 @@
 # Cheap Chicago
 Project for CS122 @UChicago
+Authors: @cgrandet @hectorsalvador
 
-cs_project contains 1 file and 1 folder:
+CheapChicago contains 1 file and 1 folder:
 
 file: 160221crawler.py
 A crawler that scrapes the Yelp website looking for establishments that have certain characteristics in a particular neighborhood. Requires Python 2.7, bs4, oauth2, requests, urllib, urllib2.
