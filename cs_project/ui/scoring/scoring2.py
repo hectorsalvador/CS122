@@ -1,5 +1,13 @@
-## Read json files containing information of businesses on each neighborhood
-## Assign scores to each establishment
+#Cheap Chicago - Final project for CS122
+
+# Carlos O. Grandet Caballero
+# Hector Salvador Lopez
+
+'''
+This code:
+Reads json files containing information of businesses on each neighborhood
+Assigns scores to each establishment
+'''
 
 import json
 import numpy
@@ -17,8 +25,9 @@ PM_HOURS = 1200
 EARTH_RADIUS = 6371 # KM. Use 3956 for miles.
 HORZ = 512
 VERT = 512
-PATH_1 = '/Users/Hector/Documents/Git/CS122/cs_project/ui/neigborhoods'
-PATH_2 = '/Users/Hector/Documents/Git/CS122/cs_project/ui/scoring'
+PATH_1 = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/neigborhoods'
+PATH_2 = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/scoring'
+
 DAY_DICT = {"Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed", \
 "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun"}
 
@@ -281,11 +290,10 @@ def import_address(biz_dict):
 	biz_dict is a dictionary with elements related to a business
 	'''
 	address = biz_dict.get("address", None)
-	number = '[1-9]+[0-9]*'
-	card_pt = '[NSEW]'
-	street_name = '[A-Z][ A-Za-z]*'
-	street_type = '[A-Z][a-z]+'
-	valid_address = ' '.join([number, card_pt, street_name, street_type])
+	number = '[0-9]+'
+	card_pt = '[NSEW ]'
+	name = ".+"
+	valid_address = ' '.join([number, card_pt, name])
 	if address == None or len(address) == 0 or \
 		len(re.findall(valid_address, address[0])) == 0:
 		return None
