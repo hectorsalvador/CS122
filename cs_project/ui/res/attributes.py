@@ -1,144 +1,127 @@
+#Cheap Chicago - Final project for CS122
+
+# Carlos O. Grandet Caballero
+# Hector Salvador Lopez
+
+'''
+This code is mainly used to clean the data and generate the entries for the
+form, it is simply a set of helping functions that allowed us to homogeneize 
+and clean the data from the neighborhood dictionaries. 
+'''
 import os
 import json
 import glob  
 import csv 
 import re 
 
-path = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/neigborhoods'
-# files=glob.glob(path) 
-# print(files)  
-# for filename in files:
-# 	print(filename)
+PATH = '/home/student/cs122-win-16-cgrandet-hectorsalvador/cs_project/ui/neigborhoods'
+
+def gen_categories(neighborhood_filename,relationship_filename):
+	'''
+	Given a relationship of categories and subcategories from Yelp,
+	relate each business to a category and update the neighborhood dictionary
+	Input: 
+	neighborhood_filename: a filename that contains YELP information for a neighborhood
+	relationship_filename: a filename that contains the relationship between categories 
+	and subcategories in the YELP nomenclature.
+	Output
+	Two files, the updated neighborhood dictionary and a new dictionary
+	that relates each subcategory to a parent. 
+	'''
+	with open(neighborhood_filename,"r") as a:
+		neigh_dict = json.load(a)
+
+	with open(relationship_filename,"r") as b:
+		relationship_dict = json.load(b)
+
+	category_dict = {}
+	for item in relationship_dict:
+		category_dict[item["title"]]= item["parents"][0]
+
+	for biz in neigh_dict:
+		subcategories = neigh_dict[biz][categories]
+		for item in subcategories:
+			for subitem in item:
+				if subitem in list(category_dict.keys()):
+					neigh_dict[biz]["category"] = category_dict[subitem]
+
+	for keys,values in category.items():
+
+	with open(neighborhood_filename, "w") as c:
+	    json.dump(neigh_dict,c)
+
+	with open("categories_final", "w") as c:
+	    json.dump(neigh_dict,c)
 
 
-categories_set = set()
-neighborhood_set = set()
-attributes_type = {}
 
-with open("categories_final.json", "r") as b:
-    categories_json = json.load(b)
+def obtain_form_entries(neighborhoods_form,categories_form,attributes_form):
+	'''
+	Creates csv files that will act as fields for the form of the Django website
+	Input: 
+	neighborhoods_form: the name of the csv filename that will contain the neighborhoods
+	categories_form: the name of the csv filename that will contain the categories
+	attributes_form: the name of the csv filename that will contain the attributes
 
-count = 0 
-print("test")
-count = 0
-for filename in os.listdir(path):
-	neighborhood_name = re.search("([A-Za-z-' ]+)(_dict+)",filename).group(1)
-	file_dir = os.path.join(path, filename)
-	neighborhood_set.add(neighborhood_name)
-	print(file_dir)
-	with open(file_dir, "r") as b:
-	    y_dict = json.load(b)
-	for biz in y_dict:
-		category_value  = y_dict[biz].get("category",None)
-		categories_set.add(category_value)
+	Output
+	Three csv files
+	'''
+	with open("categories_final.json", "r") as b:
+	    categories_json = json.load(b)
+
+	categories_set = set()
+	neighborhood_set = set()
+	attributes_dict = {}
+
+
+	for filename in os.listdir(path):
+		neighborhood_name = re.search("([A-Za-z-' ]+)(_dict+)",filename).group(1)
+		file_dir = os.path.join(path, filename)
+		neighborhood_set.add(neighborhood_name)
 		
-		biz_category = y_dict[biz].get("category","Without category")
-		attributes_set = attributes_type.get(biz_category,set())
-		if "attributes" in y_dict[biz].keys():
-			attr_dict = y_dict[biz]["attributes"]
-			if isinstance(attr_dict,dict):
-				for key,value in attr_dict.items():
-					attributes_set.add((key,value))
-					attributes_type[biz_category] = attributes_set
-		else:
-			y_dict[biz]["attributes"] = None
+		with open(file_dir, "r") as b:
+		    biz_dict = json.load(b)
+		
+		for biz in biz_dict:
+			biz_category = biz_dict[biz].get("category",None)
+			categories_set.add(biz_category)
+			if category_value != None:
+				attributes_set = attributes_dict.get(biz_category,set())
+				if "attributes" in biz_dict[biz].keys():
+					biz_attributes = biz_dict[biz]["attributes"]
+					for key,value in biz_attributes.items():
+						attributes_set.add((key,value))
+						attributes_dict[biz_category] = attributes_set
+			else:
+				biz_dict[biz]["attributes"] = None
+
+	#Transform set of values into list 
+	for key,values in attributes_dict.items():
+		attributes_dict[key] = list(values)
+
+	with open(attributes_form, "w") as c:
+	    json.dump(attributes_dict,c)
+
+	for key in sorted(list(attributes_dict.keys())):
+		
+		cat_file = open(categories_form, 'w')
+		w1 = csv.writer(cat_file, delimiter=",")
+		w1.writerow([key])
+		cat_file.close()
 
 
-# attributes_set_dict = {}
-# for key, value in list(attributes_set):
-#     attr_list = attributes_set_dict.get(key,[])
-#     attr_list.append(value)
-#     attributes_set_dict[key] = attr_list
+		attr_file = open('attributes_'+key+".csv", 'w')
+		w = csv.writer(attr_file, delimiter=",",skipinitialspace=True)
+		for attr,value in attributes_dict[key]:
+			w.writerow([attr,value])
+		attr_file.close()
 
-for key,values in attributes_type.items():
-	attributes_type[key] = list(values)
+	
+	neigh_file = open(neighborhoods_form, 'w')
+	w2 = csv.writer(neigh_file, delimiter=",")
+	for neighborhood in sorted(list(neighborhood_set)):
+		w2.writerow([neighborhood])
+	neigh_file.close()
 
-with open('attributes_final.json', "w") as c:
-    json.dump(attributes_type,c)
-
-for key in attributes_type.keys():
-	f = open('attributes_'+key+".csv", 'w')
-	w = csv.writer(f, delimiter=",",skipinitialspace=True)
-	for key,value in attributes_type[key]:
-		w.writerow([key,value])
-
-	f4 = open('categories.csv', 'w')
-	w4 = csv.writer(f4, delimiter=",")
-	for key in sorted(list(attributes_type.keys())):
-		w4.writerow([key])
-	f4.close()
-
-	# if "Yes" in values or "No" in values:
-	# 	w.writerow([key])
-	# else:
-	# 	for value in values:
-	# 		w.writerow([key,value])
-
-f.close()
-
-f1 = open('subcategories.csv', 'w')
-w1 = csv.writer(f1, delimiter=",")
-for category in list(categories_set):
-	w1.writerow([category])
-
-f1.close()
-
-f2 = open('neighborhood.csv', 'w')
-w2 = csv.writer(f2, delimiter=",")
-for neighborhood in sorted(list(neighborhood_set)):
-	w2.writerow([neighborhood])
-
-f2.close()
-
-f3 = open('attributes_1.csv', 'w')
-w3 = csv.writer(f3, delimiter=",")
-
-csvfile = open('attributes.csv', 'r')
-info =csv.reader(csvfile,skipinitialspace = True)
-for row in info:
-	if len(row) == 1:
-		w3.writerow(row)
-
-f3.close()
-
-f5 = open('attributes_2.csv', 'w')
-w5 = csv.writer(f5, delimiter=",")
-
-csvfile = open('attributes.csv', 'r')
-info =csv.reader(csvfile,skipinitialspace = True)
-for row in info:
-	if len(row) != 1:
-		for item in row:		
-			w5.writerow([item])
-
-f5.close()
-
-
-with open("categories.json", "r") as b:
-    Yelp_categories = json.load(b)
-
-categories_dict = {}
-count = 0
-for cat in Yelp_categories:
-	for parent in range(len(cat["parents"])):
-		current_list = categories_dict.get(cat["parents"][parent],[])
-		current_list.append(cat["title"])
-		categories_dict[cat["parents"][parent]] = current_list
-
-parent_dict = {"beautysvc":"Beauty","food":"Food","shopping":"Shopping",
-			"fashion":"Fashion","arts":"Arts","restaurants":"Restaurants",
-			"bars":"Bars","nightlife":"Nightlife","active":"Recreation"}
-
-category_freq = {}
-for parent,title_list in categories_dict.items():
-	if parent in list(parent_dict.keys()):
-		for title in title_list:
-			if title in categories_set:
-				current_list = category_freq.get(parent_dict[parent],[])
-				current_list.append(title)
-				category_freq[parent_dict[parent]] = current_list
-
-with open('categories_final.json', "w") as c:
-    json.dump(category_freq,c)
 
 

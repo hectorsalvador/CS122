@@ -1,3 +1,12 @@
+#Cheap Chicago - Final project for CS122
+
+# Carlos O. Grandet Caballero
+# Hector Salvador Lopez
+
+'''
+This code acts as the views page of the Django site 
+'''
+
 from django.shortcuts import render
 from django.http import HttpResponse
 from django import forms
@@ -8,16 +17,21 @@ import sys
 import csv
 import os
 from operator import and_
-from courses import find_business
 from functools import reduce
 from scoring.scoring2 import run_score
 
 
-NOPREF_STR = 'No preference'
 RES_DIR = os.path.join(os.path.dirname(__file__), '..', 'res')
 
+##################################
+### Author: CSS122 PA3  ##
+#We did not modify this code at all
+##################################
 
 def _valid_military_time(time):
+    '''
+    Check if valid military time
+    '''
     return (0 <= time < 2400) and (time % 100 < 60)
 
 
@@ -36,18 +50,6 @@ def _load_res_column(filename, col=0):
 def _build_dropdown(options):
     """Converts a list to (value, caption) tuples"""
     return [(x, x) for x in options if x is not None ]
-
-
-DAYS = _build_dropdown(_load_res_column('day_list.csv'))
-NEIGH = _build_dropdown([None] + _load_res_column('neighborhood.csv'))
-ESTABLISHMENTS = ["food","restaurants","beauty","active","arts","nightlife","shopping"]
-EST = _build_dropdown([None] + _load_res_column('categories.csv'))
-ATTR = _build_dropdown([None] + _load_res_column('attributes_1.csv'))
-ATTR_REST = _build_dropdown([None] + _load_res_column('attributes_rest.csv'))
-ATTR_CLUB = _build_dropdown([None] + _load_res_column('attributes_nightlife.csv'))
-# ESTABLISHMENTS = build_dropdown([None] + _load_res_column('establishment_list.csv'))
-# ATTRIBUTES = build_dropdown([None] + _load_res_column('attributes_list.csv'))
-
 
 class IntegerRange(forms.MultiValueField):
     def __init__(self, *args, **kwargs):
@@ -74,7 +76,18 @@ class TimeRange(IntegerRange):
         return values
 
 RANGE_WIDGET = forms.widgets.MultiWidget(widgets=(forms.widgets.NumberInput,
+ 
                                                   forms.widgets.NumberInput))
+##################################
+### This code was inspired on the PA3, but we did modifications
+##################################
+
+DAYS = _build_dropdown(_load_res_column('day_list.csv'))
+NEIGH = _build_dropdown([None] + _load_res_column('neighborhood.csv'))
+ESTABLISHMENTS = ["food","restaurants","beauty","active","arts","nightlife","shopping"]
+EST = _build_dropdown([None] + _load_res_column('categories.csv'))
+ATTR = _build_dropdown([None] + _load_res_column('attributes_form.csv'))
+
 
 class SearchForm(forms.Form):
     
@@ -84,7 +97,7 @@ class SearchForm(forms.Form):
                                      widget=forms.CheckboxSelectMultiple,
                                      required=True)
     attr_rest = forms.MultipleChoiceField(label='What type of experience',
-                                     choices= ATTR_REST,
+                                     choices= ATTR,
                                      widget=forms.CheckboxSelectMultiple,
                                      required=False)
     time = TimeRange(
@@ -100,6 +113,9 @@ class SearchForm(forms.Form):
 
 
 def home(request):
+    '''
+    Create a home view with the form. 
+    '''
     context = {}
     res = None
     if request.method == 'GET':
@@ -125,33 +141,21 @@ def home(request):
             # if form.cleaned_data['show_args']:
             #     context['args'] = 'args_to_ui = ' + json.dumps(args, indent=2)
 
+            # Generate a score given the arguments
             try:
                 res = run_score(args)
-            except Exception as e:
-                print('Exception caught')
-                bt = traceback.format_exception(*sys.exc_info()[:3])
-                context['err'] = """
-                An exception was thrown in find_courses:
-                <pre>{}
-{}</pre>
-                """.format(e, '\n'.join(bt))
-
+            except:
                 res = None
     else:
         form = SearchForm()
 
-   
-    # Handle different responses of res
     if res is None:
-        context['result'] = None
-    elif isinstance(res, str):
-        context['result'] = None
-        context['err'] = res
-        result = None
-        cols = None
+        context['result'] = [["No results found"]]
+    
+
     else:
         url, color_label, header, table = res
-
+        #Add results of the scoring to the context of the website
         context['map'] = url 
         context['result'] = table
         context['columns'] = header
