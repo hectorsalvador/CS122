@@ -1,5 +1,5 @@
-# Cheap Chicago
-# Project for CMSC12200 - Computer Science with Applications II @University of Chicago
+## Cheap Chicago
+Project for CMSC12200 - Computer Science with Applications II @University of Chicago
 
 Authors: @cgrandet @hectorsalvador
 
