@@ -2,7 +2,7 @@
 # Carlos O. Grandet Caballero
 # Hector Salvador Lopez
 
-# ORIGINAL CODE, except when noted as different
+# ORIGINAL CODE, except when otherwise noted
 # Reads json files containing information of establishments on each neighborhood
 # Assigns scores to each establishment and selects the best scored
 # Returns information to display on django-based web interface
@@ -31,14 +31,14 @@ DAY_DICT = {"Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed", \
 
 def run_score(args_from_ui):
     '''
-    Input:
+    Inputs:
         args_from_ui, a dictionary with information introduced by user
         EXAMPLE
         args_to_ui = {"time_start": 900, "attr_rest": ["Hipster"],
             "neigh": "Hyde Park", "day": "Monday", "time_end": 2300,
             "est": ["Restaurants", "Nightlife"],
             "attr_club": ["Karaoke"]}
-    Output:
+    Outputs:
         A tuple with information required by "/ui/search/views.py"
     '''
     neigh_name = args_from_ui["neigh"]
