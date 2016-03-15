@@ -6,21 +6,18 @@ Authors: @cgrandet @hectorsalvador
 CheapChicago is a webpage that offers you a list of establishments based on three characteristics: low prices, great ratings, and things you like. Just click on the categories of places you want to go, select some desirable characteristics, and you'll get a map with the information of the best scored places in a Chicago neighborhood!
 
 CheapChicago contains 1 file and 1 folder:
-
-file: 160221crawler.py
+- File: 160221crawler.py
 A crawler that scrapes the Yelp website looking for establishments that have certain characteristics in a particular neighborhood. Requires Python 2.7, bs4, oauth2, requests, urllib, urllib2.
-	
 
-folder: ui
+- Folder: ui
 A folder containing information for the webpage:
-
-1) manage.py: executes the django interface using "runserver" as an argument
-2) neighborhoods: a folder containing the information of Yelp's scraped establishments 
-3) res: contains csv files of the possible options to fill in the web page
-4) scoring: contains a python file that returns the best scored establishments, according to the inputs selected by the user, and a url that maps them. Also contains the file with the Google StaticMaps API key. Requires Python 3, numpy, datetime, and re.
-5) search: contains files for the views page of the Django website
-6) static: has the CSS code for the website format
-7) ui: complementary code for the website (unchanged from the CS122 - Online Course Catalog code)
+	- manage.py: executes the django interface using "runserver" as an argument
+	- neighborhoods: a folder containing the information of Yelp's scraped establishments 
+	- res: contains csv files of the possible options to fill in the web page
+	- scoring: contains a python file that returns the best scored establishments, according to the inputs selected by the user, and a url that maps them. Also contains the file with the Google StaticMaps API key. Requires Python 3, numpy, datetime, and re.
+	- search: contains files for the views page of the Django website
+	- static: has the CSS code for the website format
+	- ui: complementary code for the website (unchanged from the CS122 - Online Course Catalog code)
 
 To run the website, go to ui folder and run: << python manage.py runserver >>. Open then a web browser with the indicated http address.
 
