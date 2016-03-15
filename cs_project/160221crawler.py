@@ -1,47 +1,44 @@
-#Cheap Chicago - Final project for CS122
-#IMPORTANT: RUN THIS CODE WITH PYTHON 2.7
+# Cheap Chicago - Final project for CS122
 # Carlos O. Grandet Caballero
 # Hector Salvador Lopez
 
-'''
-The crawler was used to obtain establishments information from the
-Yelp website. It took advantage of the yelp search url structure:
-    x = "http://www.yelp.com/search?start=0&sortby=rating&cflt=food& \
-    attrs=RestaurantsPriceRange2.1&l=p:IL:Chicago::Lakeview"
-To make an efficient search within the Yelp website of all the establishments
-that met the criteria that the user needed, then it scrapper the business info
-from the website and from the API. The crawler is inspired on PA2, it uses the
-Beautiful Soup library we saw in class, as well as two functions that were
-provided by the instructors in PA2. Finally, it uses a code provided by Yelp to
-connect to the API.
-'''
+# ORIGINAL CODE, except when otherwise noted
+# IMPORTANT: RUN THIS CODE WITH PYTHON 2.7
+# The crawler was used to obtain establishments information from the
+# Yelp website. It took advantage of the yelp search url structure:
+# x = "http://www.yelp.com/search?start=0&sortby=rating&cflt=food&attrs=RestaurantsPriceRange2.1&l=p:IL:Chicago::Lakeview"
+# To make an efficient search within the Yelp website of all the establishments
+# that met the criteria that the user needed, then it scrapper the business info
+# from the website and from the API. The crawler is inspired on PA2, it uses the
+# Beautiful Soup library we saw in class, as well as two functions that were
+# provided by the instructors in PA2. Finally, it uses a code provided by Yelp to
+# connect to the API.
 
-import re
-from bs4 import BeautifulSoup
-import Queue
-import json
-import sys
-import csv
 import argparse
+from bs4 import BeautifulSoup
+import cgi
+import csv
+import datetime
+import json
+import oauth2
 import pprint
+import Queue
+import re
+import requests
+import sys
 import urlparse
 import urllib
 import urllib2
-import requests
-import datetime
-import requests
-import oauth2
-import cgi
 
-#Original functions 
 def get_soup(url, url_set):
     '''
     Get the soup from an url and add the url to a set of previously visited
     websites.
     Input:
-    url - a url from YELP domain
-    url_set - a set of YELP urls
-    Output: a beautiful soup object
+        url - a url from YELP domain
+        url_set - a set of YELP urls
+    Output
+        a beautiful soup object
     '''
     html = urllib.urlopen(url).read()
     soup = BeautifulSoup(html,"html.parser")
@@ -53,15 +50,18 @@ def create_website(criteria):
     '''
     Creates the first website url to crawl based on neighborhood, type of 
         establishment, and price range 
-    Input: criteria - a dictionary with three keys indicating neighborhood, 
+    Inputs: 
+        criteria, a dictionary with three keys indicating neighborhood, 
         type of establishment, and price range
-    Output: a website url 
+    Output: 
+        a website url 
     '''
     neighborhood = criteria["neighborhood"].split()
     establishment = criteria["establishment"]
     price_range = criteria["price_range"]
     basic_url = "http://www.yelp.com/search?"
-    establishment_url = "sortby=rating&cflt={x}&attrs=Restaurants".format(x = establishment)
+    establishment_url = "sortby=rating&cflt={x}&attrs=Restaurants".format(x = \
+        establishment)
     price_url = "PriceRange2.{x}&".format(x = price_range)
     neighborhood_url = "l=p:IL:Chicago::{x}".format(x = "_".join(neighborhood))
     final_url = basic_url + establishment_url + price_url + neighborhood_url
@@ -71,10 +71,10 @@ def create_website(criteria):
 def add_links(tag, url_queue, url_set):
     '''
     Function to add all the links (href tag) to an url queue
-    Input:
-    Tag: A BS4 tag object
-    url_queue: a queue of url to visit
-    url_set: a visited url set
+    Inputs:
+        tag, a BS4 tag object
+        url_queue, a queue of url to visit
+        url_set, a visited url set
     '''
     url = tag.get("href")
     url = remove_fragment(url)
@@ -91,11 +91,12 @@ def add_links(tag, url_queue, url_set):
 def add_business_urls(soup, url_queue, url_set):
     '''
     Add all business found in an url
-    Soup: A website BS4 soup object
-    url_queue: a queue of url to visit
-    url_set: a visited url set
+    Inputs:
+        soup, a website BS4 soup object
+        url_queue, a queue of url to visit
+        url_set, a visited url set
     '''
-    biz_tags = soup.find_all("a", class_= "biz-name")
+    biz_tags = soup.find_all("a", class_ = "biz-name")
     if biz_tags == None:
         print("not a result page")
         return None
@@ -106,11 +107,13 @@ def add_business_urls(soup, url_queue, url_set):
 def add_additional_pages_urls(soup, url_queue, url_set):
     '''
     Add all result pages from a search engine.
-    Soup: A website BS4 soup object
-    url_queue: a queue of url to visit
-    url_set: a visited url set
+    Inputs:
+        soup, a website BS4 soup object
+        url_queue, a queue of url to visit
+        url_set, a visited url set
     '''
-    result_tag = soup.find_all("a", class_ = "available-number pagination-links_anchor")
+    result_tag = soup.find_all("a", class_ = \
+        "available-number pagination-links_anchor")
     if result_tag == None:
         print("link not available")
         return None
@@ -120,18 +123,18 @@ def add_additional_pages_urls(soup, url_queue, url_set):
         
 def get_biz_info(soup, url_set, attributes_set, max_review):
     '''
-    Add all info from one business into
-    a dictionary
-    Soup: A website BS4 soup object
-    url_set: a visited url set
-    attributes_set: a set of attributes a business has (provided by YELP,
-    e.g. hipster, karaoke, romantic.
-    max_review: a maximum amount of pages to obtain reviews from
-
-    Return: dictionary with business info. 
+    Add all info from one business into a dictionary
+    Inputs:
+        soup, a website BS4 soup object
+        url_set, a visited url set
+        attributes_set, a set of attributes of a business (provided by YELP)
+            (e.g. hipster, karaoke, romantic)
+        max_review, a maximum amount of pages to obtain reviews from
+    Outputs: 
+        a dictionary with business info
     '''
     #Find the section in a Soup that has info from a business
-    main_tag = soup.find("div", class_= "biz-page-header-left")
+    main_tag = soup.find("div", class_ = "biz-page-header-left")
     #If such section doest not exist, return None
     if main_tag == None:
         print("not a business page")
@@ -187,8 +190,8 @@ def get_biz_info(soup, url_set, attributes_set, max_review):
     comment_url_set = set()
 
     #Crawl reviews pages, sometimes there were businesses with more than
-    #one review page, in this case, we did a subcrawler that went into those pages
-    #and obtained information from them. 
+    #one review page, in this case, we did a subcrawler that went into those 
+    #pages and obtained information from them. 
     add_additional_pages_urls(soup,comment_url_queue,comment_url_set)
     soup_list = [soup]
     #We limitted the crawling to 2 review pages (up to 60 comments, to make
@@ -209,10 +212,11 @@ def get_biz_info(soup, url_set, attributes_set, max_review):
             for tag in comment_tag:
                 description = tag.find("p", itemprop = "description").text
                 rating = re.search("\d", tag.find("i").get("title")).group(0)
-                date_list = tag.find("meta", itemprop = "datePublished").get("content").split("-")
+                date_list = tag.find("meta", itemprop = "datePublished"\
+                    ).get("content").split("-")
                 date_list = [int(val) for val in date_list]
-                comment_dict[number_comment] = {"description" : description, "rating" : rating, \
-                "date" : date_list} 
+                comment_dict[number_comment] = {"description": description, \
+                "rating": rating, "date": date_list} 
                 number_comment += 1
                 
     biz_dict["comments"] = comment_dict
@@ -222,19 +226,19 @@ def get_biz_info(soup, url_set, attributes_set, max_review):
 
 def run_model(criteria, num_pages_to_crawl,filename, attributes_set, max_review):
     '''
-    Run a crawling model for a set of criteria and obtain
-    all the relevant information into filenames
-    Input:
-    criteria: A dictionary with the type of business you are interested
-    in looking for. (neighborhood, price, type of establishment)
-    num_pages_to_crawl: A maximum amount of pages to crawl
-    filename: Name of file where to store the dictionary
-    attributes_set: a set of attributes for all the business in the
-    model. (It's an input of the function because it is a set that all
-    neighborhoods share).
-    max_review: a maximum amount of pages to obtain reviews from
+    Run a crawling model for a set of criteria and store relevant information 
+        into filenames
+    Inputs:
+        criteria, dictionary with the type of establishment you are interested
+            in looking for. (e.g. neighborhood, price, type of establishment)
+        num_pages_to_crawl, int of maximum amount of pages to crawl
+        filename, string with name of file where to store the dictionary
+        attributes_set, a set of attributes for all the business in the
+            model. (It is an input of the function because it is a set that all
+            neighborhoods share).
+        max_review, an int of the maximum number of pages to obtain reviews from
     '''
-     #Create the first url to start the crawling
+    # Create the first url to start the crawling
     original_url = create_website(criteria)
     url_set = set()
     url_queue = Queue.Queue()
@@ -256,8 +260,8 @@ def run_model(criteria, num_pages_to_crawl,filename, attributes_set, max_review)
                 biz_id = re.search("(biz/)(.+)(\?+)", current_url).group(2)
             print(biz_id)
 
-            #Do exceptions to determine which was the problem with retrieving info
-            #from the API
+            # Do exceptions to determine which was the problem with retrieving 
+            # info from the API
             try:
                 api_dict[biz_id] = get_business(biz_id)
             except:
@@ -271,15 +275,18 @@ def run_model(criteria, num_pages_to_crawl,filename, attributes_set, max_review)
             except:
                 print("address failed")
             try:
-                biz_dict["neighborhoods"] = api_dict[biz_id]["location"]["neighborhoods"]
+                biz_dict["neighborhoods"] = \
+                api_dict[biz_id]["location"]["neighborhoods"]
             except:
                 print("neighborhoods failed")
             try:        
-                biz_dict["latitude"] = api_dict[biz_id]["location"]["coordinate"]["latitude"]
+                biz_dict["latitude"] = \
+                api_dict[biz_id]["location"]["coordinate"]["latitude"]
             except:
                 print("latitude failed")
             try:
-                biz_dict["longitude"] = api_dict[biz_id]["location"]["coordinate"]["longitude"]
+                biz_dict["longitude"] = \
+                api_dict[biz_id]["location"]["coordinate"]["longitude"]
             except:
                 print("longitude failed")
 
@@ -302,15 +309,16 @@ def run_model(criteria, num_pages_to_crawl,filename, attributes_set, max_review)
                     json.dump(establishments_dict,c)
                     establishments_dict[biz_id] = biz_dict
 
-        #If a url is not a business page, obtain the bussiness and search urls from that page.
+        #If a url is not a business page, obtain the bussiness and search urls 
+        #from that page.
         else: 
             add_business_urls(soup, url_queue, url_set)
             add_additional_pages_urls(soup, url_queue, url_set)
 
-##################################
-### Author: CSS122 PA2  ##
-#We did not modify this code at all
-##################################
+####################################################################
+# Author: CSS 122 PA2                                              #
+# DIRECT COPY                                                      #
+####################################################################
 def is_absolute_url(url):
     '''
     Answer question: Is url an absolute URL?
@@ -344,8 +352,8 @@ def convert_if_relative_url(current_url, new_url):
         convert_if_relative_url("http://cs.uchicago.edu", "pa/pa1.html") yields 
             'http://cs.uchicago.edu/pa/pa.html'
 
-        convert_if_relative_url("http://cs.uchicago.edu", "foo.edu/pa.html") yields
-            'http://foo.edu/pa.html'
+        convert_if_relative_url("http://cs.uchicago.edu", "foo.edu/pa.html") 
+            yields 'http://foo.edu/pa.html'
     '''
     if len(new_url) == 0 or not is_absolute_url(current_url):
         return None
@@ -367,11 +375,12 @@ def convert_if_relative_url(current_url, new_url):
     else:
         return urlparse.urljoin(current_url, new_url)
 
-##################################
-### Author: Ken Mitton (Yelp)   ##
-### kmitton@yelp.com            ##
-### https://github.com/Yelp/yelp-api/blob/master/v2/python/sample.py
-##################################
+####################################################################
+# Author: Ken Mitton (Yelp)                                        #
+# kmitton@yelp.com                                                 #
+# https://github.com/Yelp/yelp-api/blob/master/v2/python/sample.py #
+# DIRECT COPY                                                      #
+####################################################################
 
 API_HOST = 'api.yelp.com'
 SEARCH_LIMIT = 20
@@ -382,7 +391,7 @@ CONSUMER_SECRET = 'WoJ9LxTFCVgdYFq6yn3GAlLRRXE'
 TOKEN = 'VnMH3YjeyYcvV4mhXVzfcJhOwRNgaBFX'
 TOKEN_SECRET = 'boGGX7K0aX2gcY39kF3uAwuEdu0'
 
-def request(host, path, url_params=None):
+def request(host, path, url_params = None):
     """Prepares OAuth authentication and sends the request to the API.
     Args:
         host (str): The domain host of the API.
@@ -398,7 +407,7 @@ def request(host, path, url_params=None):
 
     consumer = oauth2.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
     oauth_request = oauth2.Request(
-        method="GET", url=url, parameters=url_params)
+        method = "GET", url = url, parameters = url_params)
 
     oauth_request.update(
         {
@@ -412,8 +421,6 @@ def request(host, path, url_params=None):
     oauth_request.sign_request(
         oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
     signed_url = oauth_request.to_url()
-
-    # print u'Querying {0} ...'.format(url)
 
     conn = urllib2.urlopen(signed_url, None)
     try:
@@ -440,26 +447,28 @@ def get_business(business_id):
 if __name__=="__main__":
 
     INITIAL_WEBSITE = "http://www.yelp.com/"
-    TYPE_ESTABLISHMENT =  ["food","restaurants","beautysvc","active","arts","nightlife","shopping"]
-    NEIGHBORHOODS = ["Englewood",
-    "Forest Glen", "Fulton Market", "Gage Park", 'Galewood', "Garfield Ridge",
-    "Gold Coast", 'Goose Island', 'Grand Boulevard', 'Greater Grand Crossing',
-    "Greektown", "Hegewisch", "Hermosa", "Humboldt Park", 
-    "Irving Park", "Jefferson Park", "Jeffery Manor", "Kenwood", "Lakeview",
-    "Lawndale", "Lincoln Park", "Lincoln Square", "Little Village", "Marquette Park", "McKinley Park",
+    TYPE_ESTABLISHMENT =  ["food", "restaurants", "beautysvc", "active", 
+    "arts", "nightlife", "shopping"]
+    NEIGHBORHOODS = ["Englewood", "Forest Glen", "Fulton Market", "Gage Park", 
+    'Galewood', "Garfield Ridge", "Gold Coast", 'Goose Island', 
+    'Grand Boulevard', 'Greater Grand Crossing', "Greektown", "Hegewisch", 
+    "Hermosa", "Humboldt Park", "Irving Park", "Jefferson Park", 
+    "Jeffery Manor", "Kenwood", "Lakeview", "Lawndale", "Lincoln Park", 
+    "Lincoln Square", "Little Village", "Marquette Park", "McKinley Park",
     "Montclare", "Morgan Park", "Mount Greenwood", "Near North Side",
     "Near Southside", "Near West Side", "New City", "Noble Square",
     "North Center", "North Park", "Norwood Park", "O'Hare", "Oakland",
-    "Old Town", "Portage Park", "Printer's Row", "Pullman",
-    "Ravenswood", "River East", "Pilsen","Hyde Park","South Loop","Wicker Park","Albany Park", "The Loop",
-    "Andersonville", "Archer Heights","Ashburn", "Auburn Gresham",
-     "Austin", "Avalon Park", "Avondale", "Back of the Yards",
-     "Magnificent Mile","River North","Logan Square","Belmont Central",
-     "Beverly", "Brainerd", "Bridgeport", "Brighton Park", "Bronzeville", "Bucktown", "Burnside",
-      "Cabrini-Green", "Calumet Heights", "Canaryville", "Chatham", "Chicago Lawn", "Chinatown",
-      "Clearing", "Cragin", "DePaul", "Douglas", "Dunning", "East Garfield Park","East Side", "Edgewater",
-      "Edison Park",]
-    PRICERANGE = [1,2]
+    "Old Town", "Portage Park", "Printer's Row", "Pullman", "Ravenswood", 
+    "River East", "Pilsen","Hyde Park","South Loop","Wicker Park", 
+    "Albany Park", "The Loop", "Andersonville", "Archer Heights","Ashburn", 
+    "Auburn Gresham", "Austin", "Avalon Park", "Avondale", "Back of the Yards",
+    "Magnificent Mile","River North","Logan Square","Belmont Central",
+    "Beverly", "Brainerd", "Bridgeport", "Brighton Park", "Bronzeville", 
+    "Bucktown", "Burnside", "Cabrini-Green", "Calumet Heights", "Canaryville",
+    "Chatham", "Chicago Lawn", "Chinatown", "Clearing", "Cragin", "DePaul", 
+    "Douglas", "Dunning", "East Garfield Park","East Side", "Edgewater",
+    "Edison Park",]
+    PRICERANGE = [1, 2]
     NUMBER_OF_WEBSITES = 100
     MAX_REVIEW = 2
 
@@ -468,14 +477,16 @@ if __name__=="__main__":
     for neighborhood in NEIGHBORHOODS:
         for establishment in TYPE_ESTABLISHMENT:
             for price in PRICERANGE:
-                criteria_dict[number_criteria] = {"neighborhood": neighborhood, "establishment": establishment, "price_range": price}
+                criteria_dict[number_criteria] = {"neighborhood": neighborhood,\
+                    "establishment": establishment, "price_range": price}
                 number_criteria += 1
     
     attributes_set = set()
     for criteria in criteria_dict.values():
         print("######{criteria}#######".format(criteria = criteria))
         filename = "{x}_dict.json".format(x = criteria["neighborhood"])
-        run_model(criteria, NUMBER_OF_WEBSITES, filename, attributes_set, MAX_REVIEW)
+        run_model(criteria, NUMBER_OF_WEBSITES, filename, attributes_set, \
+            MAX_REVIEW)
 
     attributes_set_dict = {}
     for key, value in list(attributes_set):
